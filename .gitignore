@@ -6,7 +6,11 @@ __pycache__/
 *.pyc
 *.svg
 *.txt
-
+.coverage
+venv/
+htmlcov
+images
+.pytest_cache
 # ignore files containing 'dev-'
 *dev_*
 
