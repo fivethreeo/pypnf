@@ -3,7 +3,7 @@
 if [ ! -d "venv" ]; then
     python3 -m venv venv
     source venv/bin/activate
-    pip install pytest pytest-cov
+    pip install pytest pytest-cov githubrelease
     pip install -e .
 else
     source venv/bin/activate
