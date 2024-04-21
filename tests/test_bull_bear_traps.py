@@ -2,11 +2,11 @@ from pypnf import PointFigureChart
 
 # closes
 bull_trap_data = [
-    1, 5, 4, 2, 3, 5, 4, 2, 3, 6, 5, 3
+    1, 5, 2, 5, 2, 6, 3
 ]
 
 bear_trap_data = [
-    2, 9, 8, 2, 3, 7, 6, 2, 3, 5, 4, 1, 2, 4
+    3, 10, 9, 3, 8, 3, 6, 5, 2, 5
 ]
 
 # Bull Trap
@@ -19,9 +19,10 @@ def test_bull_trap():
         "abs",
         "test_bull_trap"
     )
+    # chart.show()
     traps = chart.get_traps()
 
-    assert traps == {}
+    assert traps == {'box index': [4.0], 'column index': [5], 'trend': [-1]}
 
 # Bear Trap
 def test_bear_trap():
@@ -33,6 +34,7 @@ def test_bear_trap():
         "abs",
         "test_bear_trap"
     )
+    # chart.show()
     traps = chart.get_traps()
 
-    assert traps == {}
+    assert traps == {'box index': [6.0], 'column index': [6], 'trend': [1]}

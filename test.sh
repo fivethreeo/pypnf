@@ -9,5 +9,5 @@ else
     source venv/bin/activate
 fi
 
-# Run tests
-pytest --cov=pypnf --cov-report=html tests/
+# Run tests with rest of args
+pytest --cov=pypnf --cov-report=html $@ tests/
