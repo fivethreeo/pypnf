@@ -2387,13 +2387,12 @@ class PointFigureChart:
             'trend': [],
         }
 
-        for n in np.arange(1, np.size(self.breakouts['column index'])-1, 1):
-
+        for n in np.arange(1, np.size(self.breakouts['column index']), 1):
             # one triple breakout followed by a double in the same direction
             if self.breakouts['hits'][n-1] == 3 and self.breakouts['width'][n-1] == 5:
-                if self.breakouts['hits'][n] == 2 and self.breakouts['width'][n-1] == 3 \
+                if self.breakouts['hits'][n] == 2 and self.breakouts['width'][n] == 3 \
                     and self.breakouts['trend'][n] == self.breakouts['trend'][n - 1] \
-                    and self.breakouts['column index'][n] - 3 == self.breakouts['column index'][n - 1]:
+                    and self.breakouts['column index'][n] - 2 == self.breakouts['column index'][n - 1]:
 
                     catapults['column index'].append(self.breakouts['column index'][n])
                     catapults['box index'].append(self.breakouts['box index'][n])
