@@ -2247,7 +2247,7 @@ class PointFigureChart:
 
         if not self.breakouts:
             self.get_breakouts()
-        for n in range(1, np.size(self.breakouts["trend"])):
+        for n in range(0, np.size(self.breakouts["trend"])):
             trend = self.breakouts["trend"][n]
             if self.breakouts["width"][n] == 3:
                 i = self.breakouts["column index"][n] - 1
@@ -2257,7 +2257,6 @@ class PointFigureChart:
                 hits = 1
                 while (height == heights[i] or height-1 == heights[i] or height+1 == heights[i]) \
                     and (highs[i] == high or highs[i] == high-1 or highs[i] == high + 1) and (i > 0):
-                    print(n, i, height, high, heights[i], highs[i], hits)
                     height = heights[i] + 2
                     high = highs[i] + 1
                     hits += 1
@@ -2271,7 +2270,6 @@ class PointFigureChart:
                     triangles['trend'].append(trend)
 
         self.triangles = triangles
-        print(triangles)
         return self.triangles
 
     def get_high_low_poles(self):
@@ -2332,7 +2330,6 @@ class PointFigureChart:
                 nextcol = curcol + 1
 
                 trend = self.breakouts['trend'][n]
-                print(f"------trend: {heights[nextcol]}")
 
                 # if the breakout is one box and the next column reverses
                 if trend == 1 and highs[curcol] - highs[prevcol] == 1.0 and heights[nextcol] >= self.reversal:
