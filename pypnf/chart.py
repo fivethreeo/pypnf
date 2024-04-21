@@ -153,6 +153,7 @@ class PointFigureChart:
         self.breakouts = None
         self.buys = {}
         self.sells = {}
+        self.highs_lows_heights_trends = None
         self.show_breakouts = False
         self.bullish_breakout_color = 'g'
         self.bearish_breakout_color = 'm'
@@ -1305,7 +1306,13 @@ class PointFigureChart:
 
                 bo['box index'][np.size(row_bull) + n] = row_bear[n]
                 bo['column index'][np.size(row_bull) + n] = col_bear[n]
-                bo['ts index'][np.size(row_bull) + n] = self.ts['date'][self.action_index_matrix[row_bull[n], col_bull[n]]]
+              
+                bo['ts index'][np.size(row_bull) + n] = \
+                    self.ts['date'][
+                        self.action_index_matrix[
+                            np.size(row_bull) > 0 and row_bull[n] or 0,
+                            np.size(col_bull) > 0 and col_bull[n] or 0
+                    ]]
 
                 hRL = mtx[row_bear[n] + 1, 0:col_bear[n] + 1]  # horizontal resistance line
                 boL = mtx[row_bear[n], 0:col_bear[n] + 1]  # breakout line
@@ -2196,6 +2203,229 @@ class PointFigureChart:
 
         self.multiple_bottom_sell(label='TBS', multiple=3)
 
+    def get_highs_lows_heights_trends(self):
+        """
+        Helper function to get the highs, lows, heights and trends of the Point and Figure chart.
+        """
+        
+        mtx = self.matrix
+        # find high and low index for each column; sign indicates trend direction
+        T = [np.repeat([np.arange(1, np.size(mtx, 0) + 1, 1)], np.size(mtx, 1), axis=0)][0].transpose() * mtx
+
+        highs = np.zeros(np.size(mtx, 1))
+        lows = np.zeros(np.size(mtx, 1))
+        heights = np.zeros(np.size(mtx, 1))
+        trends = np.zeros(np.size(mtx, 1))
+
+        for n in range(0, np.size(mtx, 1)):
+            column = T[np.where(T[:, n] != 0), n]
+            abscolumn = np.abs(column)
+            highs[n] = np.max(abscolumn)
+            lows[n] = np.min(abscolumn)
+            heights[n] = highs[n] - lows[n] + 1
+            trends[n] = np.sign(column[0][0])
+
+        self.highs_lows_heights_trends = (highs, lows, heights, trends)
+        return self.highs_lows_heights_trends
+    
+    def get_triangles(self):
+        """
+        Returns the triangles of the Point and Figure chart.
+        """
+
+        triangles = {'column index': [],
+                     'box index': [],
+                     'width': [],
+                     'height': [],
+                     'trend': []
+                     }
+        
+        if not self.highs_lows_heights_trends:
+            self.get_highs_lows_heights_trends()
+
+        highs, lows, heights, trends = self.highs_lows_heights_trends
+
+        if not self.breakouts:
+            self.get_breakouts()
+        for n in range(1, np.size(self.breakouts["trend"])):
+            trend = self.breakouts["trend"][n]
+            if self.breakouts["width"][n] == 3:
+                i = self.breakouts["column index"][n] - 1
+                height = heights[i] + 2
+                high = highs[i] + 1
+                i -= 1
+                hits = 1
+                while (height == heights[i] or height-1 == heights[i] or height+1 == heights[i]) \
+                    and (highs[i] == high or highs[i] == high-1 or highs[i] == high + 1) and (i > 0):
+                    print(n, i, height, high, heights[i], highs[i], hits)
+                    height = heights[i] + 2
+                    high = highs[i] + 1
+                    hits += 1
+                    i -= 1
+    
+                if hits > 3:
+                    triangles['column index'].append(self.breakouts["column index"][n])
+                    triangles['box index'].append(self.breakouts["box index"][n])
+                    triangles['width'].append(hits)
+                    triangles['height'].append(height)
+                    triangles['trend'].append(trend)
+
+        self.triangles = triangles
+        print(triangles)
+        return self.triangles
+
+    def get_high_low_poles(self):
+        """
+        Returns the high and low poles of the Point and Figure chart.
+        """
+
+        if not self.highs_lows_heights_trends:
+            self.get_highs_lows_heights_trends()
+
+        highs, lows, heights, trends = self.highs_lows_heights_trends
+
+        poles = {
+            'column index': [],
+            'box index': [],
+            'trend': [],
+        }
+
+        for n in np.arange(2, np.size(self.mtx, 1) - 1, 1):
+            # low pole is any column that are three or more boxes lower than previous low column followed by a column that reverses 50% of the column
+            if trends[n] == -1 and lows[n] < lows[n - 2] - 3 and heights[n]/heights[n + 1] > 0.5:
+                poles['column index'].append(n)
+                poles['box index'].append(lows[n])
+                poles['trend'].append(trends[n])
+            # high pole is any column that are three or more boxes higher than previous high column followed by a column that reverses 50% of the column
+            if trends[n] == 1 and highs[n] > highs[n - 2] + 3 and heights[n]/heights[n + 1] > 0.5:
+                poles['column index'].append(n)
+                poles['box index'].append(highs[n])
+                poles['trend'].append(trends[n])
+
+        self.high_low_poles = poles
+        return self.high_low_poles
+
+    def get_traps(self):
+        """
+        Returns the traps of the Point and Figure chart.
+        """
+
+        # a bull trap is a triple top breakout with only one box breakout followed by a breakdown
+        # a bear trap is a triple bottom breakdown with only one box breakout followed by a breakout
+        traps = {
+            'column index': [],
+            'box index': [],
+            'trend': [],
+        }
+        
+        if not self.breakouts:
+            self.get_breakouts()
+        if not self.highs_lows_heights_trends:
+            self.get_highs_lows_heights_trends()
+        highs, lows, heights, trends = self.highs_lows_heights_trends
+
+        for n in range(0, np.size(self.breakouts['column index']), 1):
+
+            if self.breakouts['hits'][n] == 3 and self.breakouts['width'][n] == 5:
+                curcol = self.breakouts['column index'][n]
+                prevcol = curcol - 2
+                nextcol = curcol + 1
+
+                trend = self.breakouts['trend'][n]
+                print(f"------trend: {heights[nextcol]}")
+
+                # if the breakout is one box and the next column reverses
+                if trend == 1 and highs[curcol] - highs[prevcol] == 1.0 and heights[nextcol] >= self.reversal:
+                    traps['column index'].append(nextcol)
+                    traps['box index'].append(lows[nextcol])
+                    traps['trend'].append(-1)
+
+                if trend == -1 and lows[prevcol] - lows[curcol] == 1 and heights[nextcol] >= self.reversal:
+                    traps['column index'].append(nextcol)
+                    traps['box index'].append(highs[nextcol])
+                    traps['trend'].append(1)
+
+        self.traps = traps
+        return self.traps
+    
+    def get_triple_breakouts(self):
+        """
+        Returns the triple breakouts of the Point and Figure chart.
+        """
+
+        if not self.breakouts:
+            self.get_breakouts()
+
+        triples = {
+            'column index': [],
+            'box index': [],
+            'trend': [],
+        }
+
+        for n in np.arange(1, np.size(self.breakouts['column index'])-1, 1):
+
+            # two consecutive double breakouts in the same direction
+            if self.breakouts['hits'][n] == 2 and self.breakouts['width'][n] == 3:
+                if self.breakouts['trend'][n] == self.breakouts['trend'][n - 1] \
+                    and self.breakouts['column index'][n] - 3 == self.breakouts['column index'][n - 1]:
+
+                    triples['column index'].append(self.breakouts['column index'][n])
+                    triples['box index'].append(self.breakouts['box index'][n])
+                    triples['trend'].append(self.breakouts['trend'][n])
+
+        self.triple_breakouts = triples
+        return self.triple_breakouts
+
+    def get_catapults(self):
+        """
+        Returns the catapults of the Point and Figure chart.
+        """
+
+        if not self.breakouts:
+            self.get_breakouts()
+
+        catapults = {
+            'column index': [],
+            'box index': [],
+            'trend': [],
+        }
+
+        for n in np.arange(1, np.size(self.breakouts['column index'])-1, 1):
+
+            # one triple breakout followed by a double in the same direction
+            if self.breakouts['hits'][n-1] == 3 and self.breakouts['width'][n-1] == 5:
+                if self.breakouts['hits'][n] == 2 and self.breakouts['width'][n-1] == 3 \
+                    and self.breakouts['trend'][n] == self.breakouts['trend'][n - 1] \
+                    and self.breakouts['column index'][n] - 3 == self.breakouts['column index'][n - 1]:
+
+                    catapults['column index'].append(self.breakouts['column index'][n])
+                    catapults['box index'].append(self.breakouts['box index'][n])
+                    catapults['trend'].append(self.breakouts['trend'][n])
+
+        self.catapults = catapults
+
+        return self.catapults
+        
+    def get_patterns(self):
+        """
+        https://school.stockcharts.com/doku.php?id=chart_analysis:pnf_charts:pnf_alerts
+
+        Returns the patterns of the Point and Figure chart.
+        """
+        self.get_triangles()
+        self.get_high_low_poles()
+        self.get_traps()
+        self.get_triple_breakouts()
+        self.get_catapults()
+
+        return {
+            'triangles': self.triangles,
+            'high_low_poles': self.high_low_poles,
+            'traps': self.traps,
+            'triple_breakouts': self.triple_breakouts,
+            'catapults': self.catapults
+        }
+        
     def _coordinates2plot_grid(self, array):
         """
         Converts price coordinates to the plot grid.
