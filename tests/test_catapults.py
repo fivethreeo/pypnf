@@ -18,10 +18,10 @@ def test_bullish_catapult():
         "abs",
         "test_bullish_catapult"
     )
-    chart.show()
+    # chart.show()
     catapults = chart.get_catapults()
 
-    assert catapults == {}
+    assert catapults == {'box index': [7], 'column index': [7], 'trend': [1]}
 
 def test_bearish_catapult():
     chart = PointFigureChart(
@@ -32,7 +32,7 @@ def test_bearish_catapult():
         "abs",
         "test_bearish_catapult"
     )
-    chart.show()
+    # chart.show()
     catapults = chart.get_catapults()
 
-    assert catapults == {}
+    assert catapults == {'box index': [1], 'column index': [7], 'trend': [-1]}
