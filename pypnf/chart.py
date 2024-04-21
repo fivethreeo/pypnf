@@ -1310,8 +1310,8 @@ class PointFigureChart:
                 bo['ts index'][np.size(row_bull) + n] = \
                     self.ts['date'][
                         self.action_index_matrix[
-                            np.size(row_bull) > 0 and row_bull[n] or 0,
-                            np.size(col_bull) > 0 and col_bull[n] or 0
+                            np.size(row_bull) > n and row_bull[n] or 0,
+                            np.size(col_bull) > n and col_bull[n] or 0
                     ]]
 
                 hRL = mtx[row_bear[n] + 1, 0:col_bear[n] + 1]  # horizontal resistance line
