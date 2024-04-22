@@ -22,7 +22,23 @@ def test_bull_trap():
     # chart.show()
     traps = chart.get_traps()
 
-    assert traps == {'box index': [4.0], 'column index': [5], 'trend': [-1]}
+    assert traps == {
+        'bottom box index': [
+            2.0,
+        ],
+        'box index': [
+            4.0,
+        ],
+        'column index': [
+            5,
+        ],
+        'top box index': [
+            7.0,
+        ],
+        'trend': [
+            -1,
+        ],
+    }
 
 # Bear Trap
 def test_bear_trap():
@@ -37,4 +53,20 @@ def test_bear_trap():
     # chart.show()
     traps = chart.get_traps()
 
-    assert traps == {'box index': [6.0], 'column index': [6], 'trend': [1]}
+    assert traps == {
+        'bottom box index': [
+            3.0,
+        ],
+        'box index': [
+            6.0,
+        ],
+        'column index': [
+            6,
+        ],
+        'top box index': [
+            11.0,
+        ],
+        'trend': [
+            1,
+        ],
+    }

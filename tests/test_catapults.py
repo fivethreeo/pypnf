@@ -21,8 +21,24 @@ def test_bullish_catapult():
     # chart.show()
     catapults = chart.get_catapults()
 
-    assert catapults == {'box index': [7], 'column index': [7], 'trend': [1]}
-
+    assert catapults == {
+        'bottom box index': [
+            2.0,
+        ],
+        'box index': [
+            7,
+        ],
+        'column index': [
+            7,
+        ],
+        'top box index': [
+            7.0,
+        ],
+        'trend': [
+            1,
+        ],
+    }
+    
 def test_bearish_catapult():
     chart = PointFigureChart(
         {"close": bearish_catapult_data},
@@ -35,4 +51,20 @@ def test_bearish_catapult():
     # chart.show()
     catapults = chart.get_catapults()
 
-    assert catapults == {'box index': [1], 'column index': [7], 'trend': [-1]}
+    assert catapults == {
+        'bottom box index': [
+            3.0,
+        ],
+        'box index': [
+            1,
+        ],
+        'column index': [
+            7,
+        ],
+        'top box index': [
+            7.0,
+        ],
+        'trend': [
+            -1,
+        ],
+    }

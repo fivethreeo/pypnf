@@ -2235,6 +2235,8 @@ class PointFigureChart:
 
         triangles = {'column index': [],
                      'box index': [],
+                     'top box index': [],
+                     'bottom box index': [],
                      'width': [],
                      'height': [],
                      'trend': []
@@ -2263,11 +2265,15 @@ class PointFigureChart:
                     i -= 1
     
                 if hits > 3:
-                    triangles['column index'].append(self.breakouts["column index"][n])
+                    colindex = self.breakouts["column index"][n]
+                    triangles['column index'].append(colindex)
                     triangles['box index'].append(self.breakouts["box index"][n])
                     triangles['width'].append(hits)
                     triangles['height'].append(height)
                     triangles['trend'].append(trend)
+
+                    triangles['top box index'].append(np.max(highs[colindex - hits:colindex]))
+                    triangles['bottom box index'].append(np.min(lows[colindex - hits:colindex]))
 
         self.triangles = triangles
         return self.triangles
@@ -2285,6 +2291,8 @@ class PointFigureChart:
         poles = {
             'column index': [],
             'box index': [],
+            'top box index': [],
+            'bottom box index': [],
             'trend': [],
         }
 
@@ -2294,11 +2302,18 @@ class PointFigureChart:
                 poles['column index'].append(n)
                 poles['box index'].append(lows[n])
                 poles['trend'].append(trends[n])
+
+                poles['top box index'] = highs[n - 1]
+                poles['bottom box index'] = lows[n]
+
             # high pole is any column that are three or more boxes higher than previous high column followed by a column that reverses 50% of the column
             if trends[n] == 1 and highs[n] > highs[n - 2] + 3 and heights[n]/heights[n + 1] > 0.5:
                 poles['column index'].append(n)
                 poles['box index'].append(highs[n])
                 poles['trend'].append(trends[n])
+
+                poles['top box index'] = highs[n]
+                poles['bottom box index'] = lows[n - 1]
 
         self.high_low_poles = poles
         return self.high_low_poles
@@ -2306,13 +2321,16 @@ class PointFigureChart:
     def get_traps(self):
         """
         Returns the traps of the Point and Figure chart.
+
+        A bull trap is a triple top breakout with only one box breakout followed by a reversal
+        A bear trap is a triple bottom breakdown with only one box breakdown followed by a reversal
         """
 
-        # a bull trap is a triple top breakout with only one box breakout followed by a breakdown
-        # a bear trap is a triple bottom breakdown with only one box breakout followed by a breakout
         traps = {
             'column index': [],
             'box index': [],
+            'top box index': [],
+            'bottom box index': [],
             'trend': [],
         }
         
@@ -2335,10 +2353,14 @@ class PointFigureChart:
                 if trend == 1 and highs[curcol] - highs[prevcol] == 1.0 and heights[nextcol] >= self.reversal:
                     traps['column index'].append(nextcol)
                     traps['box index'].append(lows[nextcol])
+                    traps['top box index'].append(np.max(highs[curcol - 4: nextcol]))
+                    traps['bottom box index'].append(np.min(lows[curcol - 4: nextcol]))
                     traps['trend'].append(-1)
 
                 if trend == -1 and lows[prevcol] - lows[curcol] == 1 and heights[nextcol] >= self.reversal:
                     traps['column index'].append(nextcol)
+                    traps['top box index'].append(np.max(highs[curcol - 5: nextcol]))
+                    traps['bottom box index'].append(np.min(lows[curcol - 5: nextcol]))
                     traps['box index'].append(highs[nextcol])
                     traps['trend'].append(1)
 
@@ -2352,10 +2374,16 @@ class PointFigureChart:
 
         if not self.breakouts:
             self.get_breakouts()
+        if not self.highs_lows_heights_trends:
+            self.get_highs_lows_heights_trends()
+
+        highs, lows, heights, trends = self.highs_lows_heights_trends
 
         triples = {
             'column index': [],
             'box index': [],
+            'top box index': [],
+            'bottom box index': [],
             'trend': [],
         }
 
@@ -2365,10 +2393,13 @@ class PointFigureChart:
             if self.breakouts['hits'][n] == 2 and self.breakouts['width'][n] == 3:
                 if self.breakouts['trend'][n] == self.breakouts['trend'][n - 1] \
                     and self.breakouts['column index'][n] - 3 == self.breakouts['column index'][n - 1]:
-
-                    triples['column index'].append(self.breakouts['column index'][n])
+                    colindex = self.breakouts['column index'][n]
+                    triples['column index'].append(colindex)
                     triples['box index'].append(self.breakouts['box index'][n])
                     triples['trend'].append(self.breakouts['trend'][n])
+
+                    triples['top box index'].append(np.max(highs[colindex - 5: colindex]))
+                    triples['bottom box index'].append(np.min(lows[colindex - 5: colindex]))
 
         self.triple_breakouts = triples
         return self.triple_breakouts
@@ -2380,10 +2411,16 @@ class PointFigureChart:
 
         if not self.breakouts:
             self.get_breakouts()
+        if not self.highs_lows_heights_trends:
+            self.get_highs_lows_heights_trends()
+
+        highs, lows, heights, trends = self.highs_lows_heights_trends
 
         catapults = {
             'column index': [],
             'box index': [],
+            'top box index': [],
+            'bottom box index': [],
             'trend': [],
         }
 
@@ -2394,9 +2431,13 @@ class PointFigureChart:
                     and self.breakouts['trend'][n] == self.breakouts['trend'][n - 1] \
                     and self.breakouts['column index'][n] - 2 == self.breakouts['column index'][n - 1]:
 
-                    catapults['column index'].append(self.breakouts['column index'][n])
+                    colindex = self.breakouts['column index'][n]
+                    catapults['column index'].append(colindex)
                     catapults['box index'].append(self.breakouts['box index'][n])
                     catapults['trend'].append(self.breakouts['trend'][n])
+
+                    catapults['top box index'].append(np.max(highs[colindex - 7: colindex]))
+                    catapults['bottom box index'].append(np.min(lows[colindex - 7: colindex]))
 
         self.catapults = catapults
 

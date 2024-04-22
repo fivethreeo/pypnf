@@ -8,6 +8,7 @@ bearish_triangle_breakdown_data = [
     1, 11, 2, 9, 3, 8, 4, 7, 3
 ]
 
+
 def test_bullish_triangle_breakout():
     chart = PointFigureChart(
         {"close": bullish_triangle_breakout_data},
@@ -21,12 +22,29 @@ def test_bullish_triangle_breakout():
     triangles = chart.get_triangles()
 
     assert triangles == {
-        'box index': [9],
-        'column index': [6],
-        'height': [11.0],
-        'trend': [1],
-        'width': [5]
+        'bottom box index': [
+            3.0,
+        ],
+        'box index': [
+            9,
+        ],
+        'column index': [
+            6,
+        ],
+        'height': [
+            11.0,
+        ],
+        'top box index': [
+            11.0,
+        ],
+        'trend': [
+            1,
+        ],
+        'width': [
+            5,
+        ],
     }
+
 
 def test_bearish_triangle_breakdown():
     chart = PointFigureChart(
@@ -41,9 +59,25 @@ def test_bearish_triangle_breakdown():
     triangles = chart.get_triangles()
 
     assert triangles == {
-        'box index': [3],
-        'column index': [7],
-        'height': [11.0],
-        'trend': [-1],
-        'width': [6]
+        'bottom box index': [
+            3.0,
+        ],
+        'box index': [
+            3,
+        ],
+        'column index': [
+            7,
+        ],
+        'height': [
+            11.0,
+        ],
+        'top box index': [
+            11.0,
+        ],
+        'trend': [
+            -1,
+        ],
+        'width': [
+            6,
+        ],
     }
