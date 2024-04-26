@@ -64,7 +64,7 @@ def test_bear_trap():
             6,
         ],
         'top box index': [
-            11.0,
+            10.0,
         ],
         'trend': [
             1,

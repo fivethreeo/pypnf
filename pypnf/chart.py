@@ -2296,24 +2296,22 @@ class PointFigureChart:
             'trend': [],
         }
 
-        for n in np.arange(2, np.size(self.mtx, 1) - 1, 1):
-            # low pole is any column that are three or more boxes lower than previous low column followed by a column that reverses 50% of the column
-            if trends[n] == -1 and lows[n] < lows[n - 2] - 3 and heights[n]/heights[n + 1] > 0.5:
-                poles['column index'].append(n)
-                poles['box index'].append(lows[n])
-                poles['trend'].append(trends[n])
-
-                poles['top box index'] = highs[n - 1]
-                poles['bottom box index'] = lows[n]
-
-            # high pole is any column that are three or more boxes higher than previous high column followed by a column that reverses 50% of the column
+        for n in np.arange(1, np.size(heights) - 1, 1):
+            # high pole is any column that is three or more boxes higher than previous high column followed by a column that reverses 50% of the column
             if trends[n] == 1 and highs[n] > highs[n - 2] + 3 and heights[n]/heights[n + 1] > 0.5:
-                poles['column index'].append(n)
-                poles['box index'].append(highs[n])
-                poles['trend'].append(trends[n])
-
+                poles['column index'].append(n + 1)
+                poles['box index'].append(lows[n + 1])
+                poles['trend'].append(trends[n + 1])
                 poles['top box index'] = highs[n]
                 poles['bottom box index'] = lows[n - 1]
+
+            # low pole is any column that is three or more boxes lower than previous low column followed by a column that reverses 50% of the column
+            if trends[n] == -1 and lows[n] < lows[n - 2] - 3 and heights[n]/heights[n + 1] > 0.5:
+                poles['column index'].append(n + 1)
+                poles['box index'].append(highs[n + 1])
+                poles['trend'].append(trends[n + 1])
+                poles['top box index'] = highs[n - 1]
+                poles['bottom box index'] = lows[n]
 
         self.high_low_poles = poles
         return self.high_low_poles
@@ -2359,15 +2357,15 @@ class PointFigureChart:
 
                 if trend == -1 and lows[prevcol] - lows[curcol] == 1 and heights[nextcol] >= self.reversal:
                     traps['column index'].append(nextcol)
-                    traps['top box index'].append(np.max(highs[curcol - 5: nextcol]))
-                    traps['bottom box index'].append(np.min(lows[curcol - 5: nextcol]))
+                    traps['top box index'].append(np.max(highs[curcol - 4: nextcol]))
+                    traps['bottom box index'].append(np.min(lows[curcol - 4: nextcol]))
                     traps['box index'].append(highs[nextcol])
                     traps['trend'].append(1)
 
         self.traps = traps
         return self.traps
     
-    def get_triple_breakouts(self):
+    def get_asc_desc_triple_breakouts(self):
         """
         Returns the triple breakouts of the Point and Figure chart.
         """
@@ -2387,22 +2385,22 @@ class PointFigureChart:
             'trend': [],
         }
 
-        for n in np.arange(1, np.size(self.breakouts['column index'])-1, 1):
+        for n in np.arange(1, np.size(self.breakouts['column index']), 1):
 
             # two consecutive double breakouts in the same direction
             if self.breakouts['hits'][n] == 2 and self.breakouts['width'][n] == 3:
                 if self.breakouts['trend'][n] == self.breakouts['trend'][n - 1] \
-                    and self.breakouts['column index'][n] - 3 == self.breakouts['column index'][n - 1]:
+                    and self.breakouts['column index'][n] - 2 == self.breakouts['column index'][n - 1]:
                     colindex = self.breakouts['column index'][n]
                     triples['column index'].append(colindex)
                     triples['box index'].append(self.breakouts['box index'][n])
                     triples['trend'].append(self.breakouts['trend'][n])
 
-                    triples['top box index'].append(np.max(highs[colindex - 5: colindex]))
-                    triples['bottom box index'].append(np.min(lows[colindex - 5: colindex]))
+                    triples['top box index'].append(np.max(highs[colindex - 4: colindex]))
+                    triples['bottom box index'].append(np.min(lows[colindex - 4: colindex]))
 
-        self.triple_breakouts = triples
-        return self.triple_breakouts
+        self.asc_desc_triple_breakouts = triples
+        return self.asc_desc_triple_breakouts
 
     def get_catapults(self):
         """
@@ -2436,8 +2434,8 @@ class PointFigureChart:
                     catapults['box index'].append(self.breakouts['box index'][n])
                     catapults['trend'].append(self.breakouts['trend'][n])
 
-                    catapults['top box index'].append(np.max(highs[colindex - 7: colindex]))
-                    catapults['bottom box index'].append(np.min(lows[colindex - 7: colindex]))
+                    catapults['top box index'].append(np.max(highs[colindex - 6: colindex]))
+                    catapults['bottom box index'].append(np.min(lows[colindex - 6: colindex]))
 
         self.catapults = catapults
 
@@ -2452,14 +2450,14 @@ class PointFigureChart:
         self.get_triangles()
         self.get_high_low_poles()
         self.get_traps()
-        self.get_triple_breakouts()
+        self.get_asc_desc_triple_breakouts()
         self.get_catapults()
 
         return {
             'triangles': self.triangles,
             'high_low_poles': self.high_low_poles,
             'traps': self.traps,
-            'triple_breakouts': self.triple_breakouts,
+            'triple_breakouts': self.asc_desc_triple_breakouts,
             'catapults': self.catapults
         }
         
