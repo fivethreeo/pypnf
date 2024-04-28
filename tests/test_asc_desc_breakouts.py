@@ -1,4 +1,11 @@
 from pypnf import PointFigureChart
+import os
+# if SHOW_CHART var is in env set show_chart to True
+if "SHOW_CHART" in os.environ:
+    show_chart = True
+else:
+    show_chart = False
+
 
 asc_desc_triple_breakout_data = [
     5, 1, 6, 3, 7, 4, 8
@@ -18,7 +25,8 @@ def test_asc_desc_triple_breakout():
         "abs",
         "test_asc_desc_triple_breakout"
     )
-    # chart.show()
+    if show_chart:
+        chart.show()
     asc_desc_triple_breakouts = chart.get_asc_desc_triple_breakouts()
 
     assert asc_desc_triple_breakouts == {
@@ -48,7 +56,8 @@ def test_asc_desc_triple_breakdown():
         "abs",
         "test_bearish_triangle_breakdown"
     )
-    # chart.show()
+    if show_chart:
+        chart.show()
     asc_desc_triple_breakouts = chart.get_asc_desc_triple_breakouts()
 
     assert asc_desc_triple_breakouts == {

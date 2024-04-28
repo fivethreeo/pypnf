@@ -1,4 +1,10 @@
 from pypnf import PointFigureChart
+import os
+# if SHOW_CHART var is in env set show_chart to True
+if "SHOW_CHART" in os.environ:
+    show_chart = True
+else:
+    show_chart = False
 
 
 bullish_catapult_data = [
@@ -18,7 +24,8 @@ def test_bullish_catapult():
         "abs",
         "test_bullish_catapult"
     )
-    # chart.show()
+    if show_chart:
+        chart.show()
     catapults = chart.get_catapults()
 
     assert catapults == {
@@ -38,7 +45,7 @@ def test_bullish_catapult():
             1,
         ],
     }
-    
+
 def test_bearish_catapult():
     chart = PointFigureChart(
         {"close": bearish_catapult_data},
@@ -48,7 +55,8 @@ def test_bearish_catapult():
         "abs",
         "test_bearish_catapult"
     )
-    # chart.show()
+    if show_chart:
+        chart.show()
     catapults = chart.get_catapults()
 
     assert catapults == {

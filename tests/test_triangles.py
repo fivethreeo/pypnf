@@ -1,4 +1,10 @@
 from pypnf import PointFigureChart
+import os
+# if SHOW_CHART var is in env set show_chart to True
+if "SHOW_CHART" in os.environ:
+    show_chart = True
+else:
+    show_chart = False
 
 bullish_triangle_breakout_data = [
     1, 11, 2, 9, 4, 8, 5, 9
@@ -18,7 +24,8 @@ def test_bullish_triangle_breakout():
         "abs",
         "test_bullish_triangle_breakout"
     )
-    # chart.show()
+    if show_chart:
+        chart.show()
     triangles = chart.get_triangles()
 
     assert triangles == {
@@ -55,7 +62,8 @@ def test_bearish_triangle_breakdown():
         "abs",
         "test_bearish_triangle_breakdown"
     )
-    # chart.show()
+    if show_chart:
+        chart.show()
     triangles = chart.get_triangles()
 
     assert triangles == {

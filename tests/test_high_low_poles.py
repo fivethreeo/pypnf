@@ -1,4 +1,10 @@
 from pypnf import PointFigureChart
+import os
+# if SHOW_CHART var is in env set show_chart to True
+if "SHOW_CHART" in os.environ:
+    show_chart = True
+else:
+    show_chart = False
 
 high_pole_data = [
     1, 6, 2, 10, 5
@@ -18,7 +24,8 @@ def test_high_pole():
         "abs",
         "test_high_pole"
     )
-    chart.show()
+    if show_chart:
+        chart.show()
     poles = chart.get_high_low_poles()
 
     assert poles == {
@@ -45,7 +52,8 @@ def test_low_pole():
         "abs",
         "test_low_pole"
     )
-    chart.show()
+    if show_chart:
+        chart.show()
     poles = chart.get_high_low_poles()
 
     assert poles == {

@@ -7,74 +7,72 @@ else:
     show_chart = False
 
 # closes
-bull_trap_data = [
-    1, 5, 2, 5, 2, 6, 3
+bullish_signal_reversed_data = [
+    1, 6, 3, 7, 4, 8, 5, 9,4
 ]
 
-bear_trap_data = [
-    3, 10, 9, 3, 8, 3, 6, 5, 2, 5
+bearish_signal_reversed_data = [
+    10, 6, 9, 5, 8, 4, 7, 3, 8
 ]
 
-# Bull Trap
-def test_bull_trap():
+# Bullish Signal Reversed
+def test_bullish_signal_reversed():
     chart = PointFigureChart(
-        {"close": bull_trap_data},
+        {"close": bullish_signal_reversed_data},
         "cl",
         3,
         1,
         "abs",
-        "test_bull_trap"
+        "test_bullish_signal_reversed"
     )
     if show_chart:
         chart.show()
-    traps = chart.get_traps()
+    signals = chart.get_reversed_signals()
 
-    assert traps == {
+    assert signals == {
         'bottom box index': [
             2.0,
         ],
         'box index': [
-            4.0,
+            4,
         ],
         'column index': [
-            5,
+            7,
         ],
         'top box index': [
-            7.0,
+            9.0,
         ],
         'trend': [
             -1,
         ],
     }
 
-# Bear Trap
-def test_bear_trap():
+# Bearish Signal Reversed
+def test_bearish_signal_reversed():
     chart = PointFigureChart(
-        {"close": bear_trap_data},
+        {"close": bearish_signal_reversed_data},
         "cl",
         3,
         1,
         "abs",
-        "test_bear_trap"
+        "test_bearish_signal_reversed"
     )
-
     if show_chart:
         chart.show()
-    
-    traps = chart.get_traps()
+    signals = chart.get_reversed_signals()
 
-    assert traps == {
+    assert signals == {
         'bottom box index': [
-            3.0,
+            7.0,
         ],
         'box index': [
-            6.0,
+            8,
         ],
         'column index': [
-            6,
+            7,
         ],
         'top box index': [
-            10.0,
+            9.0,
         ],
         'trend': [
             1,
