@@ -27,24 +27,15 @@ def test_bull_trap():
     )
     if show_chart:
         chart.show()
-    traps = chart.get_traps()
+   
+    signals = {k:v.tolist() for k, v in chart.get_traps().items()}
 
-    assert traps == {
-        'bottom box index': [
-            2.0,
-        ],
-        'box index': [
-            4.0,
-        ],
-        'column index': [
-            5,
-        ],
-        'top box index': [
-            7.0,
-        ],
-        'trend': [
-            -1,
-        ],
+    assert signals == {
+        'bottom box index': [0.0, 0.0, 0.0, 0.0, 0.0, 2.0],
+        'box index': [0.0, 0.0, 0.0, 0.0, 0.0, 4.0],
+        'top box index': [0.0, 0.0, 0.0, 0.0, 0.0, 7.0],
+        'type': [0.0, 0.0, 0.0, 0.0, 0.0, 18.0],
+        'width': [0.0, 0.0, 0.0, 0.0, 0.0, 6.0]
     }
 
 # Bear Trap
@@ -61,22 +52,12 @@ def test_bear_trap():
     if show_chart:
         chart.show()
     
-    traps = chart.get_traps()
+    signals = {k:v.tolist() for k, v in chart.get_traps().items()}
 
-    assert traps == {
-        'bottom box index': [
-            3.0,
-        ],
-        'box index': [
-            6.0,
-        ],
-        'column index': [
-            6,
-        ],
-        'top box index': [
-            10.0,
-        ],
-        'trend': [
-            1,
-        ],
+    assert signals == {
+        'bottom box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0],
+        'box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.0],
+        'top box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0],
+        'type': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 19.0],
+        'width': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.0]
     }

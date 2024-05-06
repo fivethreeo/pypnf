@@ -26,30 +26,15 @@ def test_bullish_triangle_breakout():
     )
     if show_chart:
         chart.show()
-    triangles = chart.get_triangles()
+
+    triangles = {k:v.tolist() for k, v in chart.get_triangles().items()}
 
     assert triangles == {
-        'bottom box index': [
-            3.0,
-        ],
-        'box index': [
-            9,
-        ],
-        'column index': [
-            6,
-        ],
-        'height': [
-            11.0,
-        ],
-        'top box index': [
-            11.0,
-        ],
-        'trend': [
-            1,
-        ],
-        'width': [
-            5,
-        ],
+        'bottom box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0],
+        'box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 9.0],
+        'top box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 11.0],
+        'type': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 14.0],
+        'width': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0]
     }
 
 
@@ -64,28 +49,13 @@ def test_bearish_triangle_breakdown():
     )
     if show_chart:
         chart.show()
-    triangles = chart.get_triangles()
+        
+    triangles = {k:v.tolist() for k, v in chart.get_triangles().items()}
 
     assert triangles == {
-        'bottom box index': [
-            3.0,
-        ],
-        'box index': [
-            3,
-        ],
-        'column index': [
-            7,
-        ],
-        'height': [
-            11.0,
-        ],
-        'top box index': [
-            11.0,
-        ],
-        'trend': [
-            -1,
-        ],
-        'width': [
-            6,
-        ],
+        'bottom box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0],
+        'box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0],
+        'top box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 11.0],
+        'type': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 15.0],
+        'width': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.0]
     }

@@ -32,6 +32,32 @@ from tabulate import tabulate
 from warnings import warn
 
 
+SIGNAL_TYPES = [
+    'Buy Signal',
+    'Sell Signal',
+    'Double Top Breakout',
+    'Double Bottom Breakdown',
+    'Triple Top Breakout',
+    'Triple Bottom Breakdown',
+    'Quadruple Top Breakout',
+    'Quadruple Bottom Breakdown',
+    'Ascending Triple Top Breakout',
+    'Descending Triple Bottom Breakdown',
+    'Bullish Catapult Breakout',
+    'Bearish Catapult Breakdown',
+    'Bullish Signal Reversed',
+    'Bearish Signal Reversed',
+    'Bullish Triangle Breakout',
+    'Bearish Triangle Breakdown',
+    'Long Tail Down Reversal',
+    'Bull Trap',
+    'Bear Trap',
+    'Spread Triple Top Breakout',
+    'Spread Triple Bottom Breakdown',
+    'High Pole',
+    'Low Pole',
+]
+
 class PointFigureChart:
     """ Class to build a Point and Figure Chart from time series data
 
@@ -154,6 +180,7 @@ class PointFigureChart:
         self.buys = {}
         self.sells = {}
         self.highs_lows_heights_trends = None
+        self.signals = None
         self.show_breakouts = False
         self.bullish_breakout_color = 'g'
         self.bearish_breakout_color = 'm'
@@ -2233,14 +2260,7 @@ class PointFigureChart:
         Returns the triangles of the Point and Figure chart.
         """
 
-        triangles = {'column index': [],
-                     'box index': [],
-                     'top box index': [],
-                     'bottom box index': [],
-                     'width': [],
-                     'height': [],
-                     'trend': []
-                     }
+        self._init_signals()
         
         if not self.highs_lows_heights_trends:
             self.get_highs_lows_heights_trends()
@@ -2274,55 +2294,46 @@ class PointFigureChart:
         
                 if hits > 3:
                     colindex = self.breakouts["column index"][n]
-                    triangles['column index'].append(colindex)
-                    triangles['box index'].append(self.breakouts["box index"][n])
-                    triangles['width'].append(hits)
-                    triangles['height'].append(height)
-                    triangles['trend'].append(trend)
+                    self.signals['box index'][colindex] = self.breakouts["box index"][n]
+                    self.signals['width'][colindex] = hits
+                    self.signals['type'][colindex] = trend == 1 and 14 or 15
+                    self.signals['top box index'][colindex] = np.max(highs[colindex - hits:colindex])
+                    self.signals['bottom box index'][colindex] = np.min(lows[colindex - hits:colindex])
 
-                    triangles['top box index'].append(np.max(highs[colindex - hits:colindex]))
-                    triangles['bottom box index'].append(np.min(lows[colindex - hits:colindex]))
-
-        self.triangles = triangles
-        return self.triangles
+        return self.signals
 
     def get_high_low_poles(self):
         """
         Returns the high and low poles of the Point and Figure chart.
         """
+        
+        self._init_signals()
 
         if not self.highs_lows_heights_trends:
             self.get_highs_lows_heights_trends()
 
         highs, lows, heights, trends = self.highs_lows_heights_trends
 
-        poles = {
-            'column index': [],
-            'box index': [],
-            'top box index': [],
-            'bottom box index': [],
-            'trend': [],
-        }
-
         for n in np.arange(1, np.size(heights) - 1, 1):
             # high pole is any column that is three or more boxes higher than previous high column followed by a column that reverses 50% of the column
             if trends[n] == 1 and highs[n] > highs[n - 2] + 3 and heights[n]/heights[n + 1] > 0.5:
-                poles['column index'].append(n + 1)
-                poles['box index'].append(lows[n + 1])
-                poles['trend'].append(trends[n + 1])
-                poles['top box index'] = highs[n]
-                poles['bottom box index'] = lows[n - 1]
+                colindex = n + 1
+                self.signals['box index'][colindex] = lows[n + 1]
+                self.signals['width'][colindex] = 3
+                self.signals['type'][colindex] = 22
+                self.signals['top box index'][colindex] = highs[n]
+                self.signals['bottom box index'][colindex] = lows[n - 1]
 
             # low pole is any column that is three or more boxes lower than previous low column followed by a column that reverses 50% of the column
             if trends[n] == -1 and lows[n] < lows[n - 2] - 3 and heights[n]/heights[n + 1] > 0.5:
-                poles['column index'].append(n + 1)
-                poles['box index'].append(highs[n + 1])
-                poles['trend'].append(trends[n + 1])
-                poles['top box index'] = highs[n - 1]
-                poles['bottom box index'] = lows[n]
+                colindex = n + 1
+                self.signals['box index'][colindex] = highs[n + 1]
+                self.signals['width'][colindex] = 3
+                self.signals['type'][colindex] = 23
+                self.signals['top box index'][colindex] = highs[n - 1]
+                self.signals['bottom box index'][colindex] = lows[n]
 
-        self.high_low_poles = poles
-        return self.high_low_poles
+        return self.signals
 
     def get_traps(self):
         """
@@ -2332,14 +2343,9 @@ class PointFigureChart:
         A bear trap is a triple bottom breakdown with only one box breakdown followed by a reversal
         """
 
-        traps = {
-            'column index': [],
-            'box index': [],
-            'top box index': [],
-            'bottom box index': [],
-            'trend': [],
-        }
         
+        self._init_signals()
+
         if not self.breakouts:
             self.get_breakouts()
         if not self.highs_lows_heights_trends:
@@ -2357,26 +2363,29 @@ class PointFigureChart:
 
                 # if the breakout is one box and the next column reverses
                 if trend == 1 and highs[curcol] - highs[prevcol] == 1.0 and heights[nextcol] >= self.reversal:
-                    traps['column index'].append(nextcol)
-                    traps['box index'].append(lows[nextcol])
-                    traps['top box index'].append(np.max(highs[curcol - 4: nextcol]))
-                    traps['bottom box index'].append(np.min(lows[curcol - 4: nextcol]))
-                    traps['trend'].append(-1)
+                    colindex = nextcol
+                    self.signals['box index'][colindex] = lows[nextcol]
+                    self.signals['width'][colindex] = 6
+                    self.signals['type'][colindex] = 18
+                    self.signals['top box index'][colindex] = np.max(highs[curcol - 4: nextcol])
+                    self.signals['bottom box index'][colindex] = np.min(lows[curcol - 4: nextcol])
                 # if the breakdown is one box and the next column reverses
                 if trend == -1 and lows[prevcol] - lows[curcol] == 1 and heights[nextcol] >= self.reversal:
-                    traps['column index'].append(nextcol)
-                    traps['top box index'].append(np.max(highs[curcol - 4: nextcol]))
-                    traps['bottom box index'].append(np.min(lows[curcol - 4: nextcol]))
-                    traps['box index'].append(highs[nextcol])
-                    traps['trend'].append(1)
+                    colindex = nextcol
+                    self.signals['box index'][colindex] = highs[nextcol]
+                    self.signals['width'][colindex] = 6
+                    self.signals['type'][colindex] = 19
+                    self.signals['top box index'][colindex] = np.max(highs[curcol - 4: nextcol])
+                    self.signals['bottom box index'][colindex] = np.min(lows[curcol - 4: nextcol])
 
-        self.traps = traps
-        return self.traps
+        return self.signals
     
     def get_asc_desc_triple_breakouts(self):
         """
         Returns the triple breakouts of the Point and Figure chart.
         """
+        
+        self._init_signals()
 
         if not self.breakouts:
             self.get_breakouts()
@@ -2384,14 +2393,6 @@ class PointFigureChart:
             self.get_highs_lows_heights_trends()
 
         highs, lows, heights, trends = self.highs_lows_heights_trends
-
-        triples = {
-            'column index': [],
-            'box index': [],
-            'top box index': [],
-            'bottom box index': [],
-            'trend': [],
-        }
 
         for n in np.arange(1, np.size(self.breakouts['column index']), 1):
 
@@ -2400,20 +2401,20 @@ class PointFigureChart:
                 if self.breakouts['trend'][n] == self.breakouts['trend'][n - 1] \
                     and self.breakouts['column index'][n] - 2 == self.breakouts['column index'][n - 1]:
                     colindex = self.breakouts['column index'][n]
-                    triples['column index'].append(colindex)
-                    triples['box index'].append(self.breakouts['box index'][n])
-                    triples['trend'].append(self.breakouts['trend'][n])
+                    self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                    self.signals['width'][colindex] = 5
+                    self.signals['type'][colindex] = self.breakouts['trend'][n] == 1 and 9 or 10
+                    self.signals['top box index'][colindex] = np.max(highs[colindex - 4: colindex])
+                    self.signals['bottom box index'][colindex] = np.min(lows[colindex - 4: colindex])
 
-                    triples['top box index'].append(np.max(highs[colindex - 4: colindex]))
-                    triples['bottom box index'].append(np.min(lows[colindex - 4: colindex]))
-
-        self.asc_desc_triple_breakouts = triples
-        return self.asc_desc_triple_breakouts
+        return self.signals
 
     def get_catapults(self):
         """
         Returns the catapults of the Point and Figure chart.
         """
+        
+        self._init_signals()
 
         if not self.breakouts:
             self.get_breakouts()
@@ -2421,14 +2422,6 @@ class PointFigureChart:
             self.get_highs_lows_heights_trends()
 
         highs, lows, heights, trends = self.highs_lows_heights_trends
-
-        catapults = {
-            'column index': [],
-            'box index': [],
-            'top box index': [],
-            'bottom box index': [],
-            'trend': [],
-        }
 
         for n in np.arange(1, np.size(self.breakouts['column index']), 1):
             # one triple breakout followed by a double in the same direction
@@ -2438,18 +2431,17 @@ class PointFigureChart:
                     and self.breakouts['column index'][n] - 2 == self.breakouts['column index'][n - 1]:
 
                     colindex = self.breakouts['column index'][n]
-                    catapults['column index'].append(colindex)
-                    catapults['box index'].append(self.breakouts['box index'][n])
-                    catapults['trend'].append(self.breakouts['trend'][n])
+                    self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                    self.signals['width'][colindex] = 7
+                    self.signals['type'][colindex] = self.breakouts['trend'][n] == 1 and 11 or 12
+                    self.signals['top box index'][colindex] = np.max(highs[colindex - 6: colindex])
+                    self.signals['bottom box index'][colindex] = np.min(lows[colindex - 6: colindex])
 
-                    catapults['top box index'].append(np.max(highs[colindex - 6: colindex]))
-                    catapults['bottom box index'].append(np.min(lows[colindex - 6: colindex]))
-
-        self.catapults = catapults
-
-        return self.catapults
+        return self.signals
     
     def get_reversed_signals(self):
+ 
+        self._init_signals()
 
         if not self.breakouts:
             self.get_breakouts()
@@ -2458,67 +2450,67 @@ class PointFigureChart:
         
         highs, lows, heights, trends = self.highs_lows_heights_trends
 
-        reversed_signals = {
-            'column index': [],
-            'box index': [],
-            'top box index': [],
-            'bottom box index': [],
-            'trend': [],
-        }
-
         for n in np.arange(0, np.size(self.breakouts['column index']), 1):
             if self.breakouts['hits'][n] == 2 and self.breakouts['width'][n] == 3:
                 if self.breakouts['trend'][n] == 1:
-                    ci = self.breakouts['column index'][n]
-                    i = ci - 1
+                    colindex = self.breakouts['column index'][n]
+                    i = colindex - 1
                     c = 1
                     while(i - 2 > 0 and lows[i] == lows[i - 2] - 1 and highs[i - 1] == highs[i - 3] - 1):
                         i -= 2
                         c += 2
                     if c >= 3:
-                        reversed_signals['column index'].append(ci)
-                        reversed_signals['box index'].append(self.breakouts['box index'][n])
-                        reversed_signals['trend'].append(1)
-                        reversed_signals['top box index'].append(highs[ci])
-                        reversed_signals['bottom box index'].append(lows[i - 2])
+                        self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                        self.signals['width'][colindex] = colindex - i + 1
+                        self.signals['type'][colindex] = 13
+                        self.signals['top box index'][colindex] = highs[colindex]
+                        self.signals['bottom box index'][colindex] = lows[i - 2]
 
 
                 if self.breakouts['trend'][n] == -1:
-                    ci = self.breakouts['column index'][n]
-                    i = ci - 1
+                    colindex = self.breakouts['column index'][n]
+                    i = colindex - 1
                     c = 1
                     while(i - 2 > 0 and highs[i] == highs[i - 2] + 1 and lows[i - 1] == lows[i - 3] + 1):
                         i -= 2
                         c += 2
                     if c >= 3:
-                        reversed_signals['column index'].append(ci)
-                        reversed_signals['box index'].append(self.breakouts['box index'][n])
-                        reversed_signals['trend'].append(-1)
-                        reversed_signals['top box index'].append(highs[ci])
-                        reversed_signals['bottom box index'].append(lows[i - 2])
+                        self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                        self.signals['width'][colindex] = colindex - i + 1
+                        self.signals['type'][colindex] = 14
+                        self.signals['top box index'][colindex] = highs[i - 2]
+                        self.signals['bottom box index'][colindex] = lows[colindex]
 
-        self.reversed_signals = reversed_signals
-        return self.reversed_signals
-        
-    def get_patterns(self):
+        return self.signals
+    
+    def _init_signals(self):
+        """
+        Initializes the signals of the Point and Figure chart.
+        """
+        if not self.signals:
+            self.signals = {
+                'box index': np.zeros(np.size(self.matrix, 1)),
+                'top box index': np.zeros(np.size(self.matrix, 1)),
+                'bottom box index': np.zeros(np.size(self.matrix, 1)),
+                'type': np.zeros(np.size(self.matrix, 1)),
+                'width': np.zeros(np.size(self.matrix, 1))
+            }
+
+    def get_signals(self):
         """
         https://school.stockcharts.com/doku.php?id=chart_analysis:pnf_charts:pnf_alerts
 
         Returns the patterns of the Point and Figure chart.
         """
+
         self.get_triangles()
         self.get_high_low_poles()
         self.get_traps()
         self.get_asc_desc_triple_breakouts()
         self.get_catapults()
+        self.get_reversed_signals()
 
-        return {
-            'triangles': self.triangles,
-            'high_low_poles': self.high_low_poles,
-            'traps': self.traps,
-            'triple_breakouts': self.asc_desc_triple_breakouts,
-            'catapults': self.catapults
-        }
+        return self.signals
         
     def _coordinates2plot_grid(self, array):
         """
