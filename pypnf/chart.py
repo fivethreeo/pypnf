@@ -2605,11 +2605,11 @@ class PointFigureChart:
                 if self.breakouts['trend'][n] == 1:
                     self.signals['type'][colindex] = 19
                     self.signals['top box index'][colindex] = highs[colindex]
-                    self.signals['bottom box index'][colindex] = np.min(lows[colindex - self.breakouts['width'][n]: colindex])
+                    self.signals['bottom box index'][colindex] = np.min(lows[colindex - self.breakouts['width'][n]+1: colindex])
 
                 if self.breakouts['trend'][n] == -1:
                     self.signals['type'][colindex] = 20
-                    self.signals['top box index'][colindex] = np.max(highs[colindex - self.breakouts['width'][n]: colindex])
+                    self.signals['top box index'][colindex] = np.max(highs[colindex - self.breakouts['width'][n]+1: colindex])
                     self.signals['bottom box index'][colindex] = lows[colindex]
 
         return self.signals
@@ -2679,7 +2679,7 @@ class PointFigureChart:
         self.get_double_breakouts()
         # get simple signals last so they don't overwrite more complex signals
         self.get_buy_sell_signals()
-        
+
         return self.signals
         
     def _coordinates2plot_grid(self, array):
