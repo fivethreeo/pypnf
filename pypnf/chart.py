@@ -2255,6 +2255,39 @@ class PointFigureChart:
         self.highs_lows_heights_trends = (highs, lows, heights, trends)
         return self.highs_lows_heights_trends
     
+    def get_buy_sell_signals(self):
+        """
+        Returns the buy and sell signals of the Point and Figure chart.
+        """
+
+        self._init_signals()
+
+        if not self.highs_lows_heights_trends:
+            self.get_highs_lows_heights_trends()
+
+        highs, lows, heights, trends = self.highs_lows_heights_trends
+
+        for n in range(2, np.size(highs), 1):
+            colindex = n
+            # don't overwrite existing signals
+            if self.signals['width'][n] == 0:
+                if trends[n] == 1:
+                    if highs[n] > highs[n - 2]:
+                        self.signals['box index'][colindex] = highs[n]
+                        self.signals['width'][colindex] = 3
+                        self.signals['type'][colindex] = 0
+                        self.signals['top box index'][colindex] = highs[n]
+                        self.signals['bottom box index'][colindex] = lows[n - 1]
+                if trends[n] == -1:
+                    if lows[n] < lows[n - 2]:
+                        self.signals['box index'][colindex] = lows[n]
+                        self.signals['width'][colindex] = 3
+                        self.signals['type'][colindex] = 1
+                        self.signals['top box index'][colindex] = highs[n - 1]
+                        self.signals['bottom box index'][colindex] = lows[n]   
+
+        return self.signals
+
     def get_triangles(self, strict=False):
         """
         Returns the triangles of the Point and Figure chart.
@@ -2482,6 +2515,136 @@ class PointFigureChart:
                         self.signals['bottom box index'][colindex] = lows[colindex]
 
         return self.signals
+
+    def get_double_breakouts(self):
+        """
+        Returns the double breakouts of the Point and Figure chart.
+        """
+        
+        self._init_signals()
+
+        if not self.breakouts:
+            self.get_breakouts()
+        if not self.highs_lows_heights_trends:
+            self.get_highs_lows_heights_trends()
+
+        highs, lows, heights, trends = self.highs_lows_heights_trends
+
+        for n in np.arange(0, np.size(self.breakouts['column index']), 1):
+            if self.breakouts['hits'][n] == 2 and self.breakouts['width'][n] == 3:
+                colindex = self.breakouts['column index'][n]
+                # don't overwrite more complex signals
+                if self.signals['width'][colindex] == 0:
+                    self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                    self.signals['width'][colindex] = self.breakouts['width'][n]
+
+                    if self.breakouts['trend'][n] == 1:
+                        self.signals['type'][colindex] = 2
+                        self.signals['top box index'][colindex] = highs[colindex]
+                        self.signals['bottom box index'][colindex] = np.min(lows[colindex - self.breakouts['width'][n]: colindex])
+
+                    if self.breakouts['trend'][n] == -1:
+                        self.signals['type'][colindex] = 3
+                        self.signals['top box index'][colindex] = np.max(highs[colindex - self.breakouts['width'][n]: colindex])
+                        self.signals['bottom box index'][colindex] = lows[colindex]
+
+        return self.signals
+    
+    def get_triple_breakouts(self):
+        """
+        Returns the triple breakouts of the Point and Figure chart.
+        """
+        
+        self._init_signals()
+
+        if not self.breakouts:
+            self.get_breakouts()
+        if not self.highs_lows_heights_trends:
+            self.get_highs_lows_heights_trends()
+
+        highs, lows, heights, trends = self.highs_lows_heights_trends
+
+        for n in np.arange(0, np.size(self.breakouts['column index']), 1):
+            if self.breakouts['hits'][n] == 3 and self.breakouts['width'][n] == 5:
+                colindex = self.breakouts['column index'][n]
+                self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                self.signals['width'][colindex] = self.breakouts['width'][n]
+
+                if self.breakouts['trend'][n] == 1:
+                    self.signals['type'][colindex] = 4
+                    self.signals['top box index'][colindex] = highs[colindex]
+                    self.signals['bottom box index'][colindex] = np.min(lows[colindex - self.breakouts['width'][n]: colindex])
+
+                if self.breakouts['trend'][n] == -1:
+                    self.signals['type'][colindex] = 5
+                    self.signals['top box index'][colindex] = np.max(highs[colindex - self.breakouts['width'][n]: colindex])
+                    self.signals['bottom box index'][colindex] = lows[colindex]
+
+        return self.signals
+    
+    def get_spread_triple_breakouts(self):
+        """
+        Returns the split triple breakouts of the Point and Figure chart.
+        """
+        
+        self._init_signals()
+
+        if not self.breakouts:
+            self.get_breakouts()
+        if not self.highs_lows_heights_trends:
+            self.get_highs_lows_heights_trends()
+
+        highs, lows, heights, trends = self.highs_lows_heights_trends
+
+        for n in np.arange(0, np.size(self.breakouts['column index']), 1):
+            if self.breakouts['hits'][n] == 3 and (self.breakouts['width'][n] == 7 or self.breakouts['width'][n] == 9):
+                colindex = self.breakouts['column index'][n]
+                self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                self.signals['width'][colindex] = self.breakouts['width'][n]
+
+                if self.breakouts['trend'][n] == 1:
+                    self.signals['type'][colindex] = 19
+                    self.signals['top box index'][colindex] = highs[colindex]
+                    self.signals['bottom box index'][colindex] = np.min(lows[colindex - self.breakouts['width'][n]: colindex])
+
+                if self.breakouts['trend'][n] == -1:
+                    self.signals['type'][colindex] = 20
+                    self.signals['top box index'][colindex] = np.max(highs[colindex - self.breakouts['width'][n]: colindex])
+                    self.signals['bottom box index'][colindex] = lows[colindex]
+
+        return self.signals
+     
+    def get_quadruple_breakouts(self):
+        """
+        Returns the quadruple breakouts of the Point and Figure chart.
+        """
+        
+        self._init_signals()
+
+        if not self.breakouts:
+            self.get_breakouts()
+        if not self.highs_lows_heights_trends:
+            self.get_highs_lows_heights_trends()
+
+        highs, lows, heights, trends = self.highs_lows_heights_trends
+
+        for n in np.arange(0, np.size(self.breakouts['column index']), 1):
+            if self.breakouts['hits'][n] == 4 and self.breakouts['width'][n] == 7:
+                colindex = self.breakouts['column index'][n]
+                self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                self.signals['width'][colindex] = self.breakouts['width'][n]
+
+                if self.breakouts['trend'][n] == 1:
+                    self.signals['type'][colindex] = 6
+                    self.signals['top box index'][colindex] = highs[colindex]
+                    self.signals['bottom box index'][colindex] = np.min(lows[colindex - self.breakouts['width'][n]: colindex])
+
+                if self.breakouts['trend'][n] == -1:
+                    self.signals['type'][colindex] = 7
+                    self.signals['top box index'][colindex] = np.max(highs[colindex - self.breakouts['width'][n]: colindex])
+                    self.signals['bottom box index'][colindex] = lows[colindex]
+
+        return self.signals
     
     def _init_signals(self):
         """
@@ -2509,7 +2672,14 @@ class PointFigureChart:
         self.get_asc_desc_triple_breakouts()
         self.get_catapults()
         self.get_reversed_signals()
-
+        self.get_spread_triple_breakouts()
+        self.get_triple_breakouts()
+        self.get_quadruple_breakouts()
+        # get double breakouts after more complex signals so they don't overwrite more complex signals
+        self.get_double_breakouts()
+        # get simple signals last so they don't overwrite more complex signals
+        self.get_buy_sell_signals()
+        
         return self.signals
         
     def _coordinates2plot_grid(self, array):
