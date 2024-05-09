@@ -1338,8 +1338,8 @@ class PointFigureChart:
                 bo['ts index'][np.size(row_bull) + n] = \
                     self.ts['date'][
                         self.action_index_matrix[
-                            np.size(row_bull) > n and row_bull[n] or 0,
-                            np.size(col_bull) > n and col_bull[n] or 0
+                            row_bear[n],
+                            col_bear[n]
                     ]]
 
                 hRL = mtx[row_bear[n] + 1, 0:col_bear[n] + 1]  # horizontal resistance line
@@ -2368,7 +2368,7 @@ class PointFigureChart:
             # high pole is any column that is three or more boxes higher than previous high column followed by a column that reverses 50% of the column
             if trends[n] == 1 and highs[n] > highs[n - 2] + 3 and heights[n]/heights[n + 1] > 0.5:
                 colindex = n + 1
-                boxindex = int(lows[n + 1])
+                boxindex = lows[n + 1]
                 self.signals['box index'][colindex] = boxindex
                 self.signals['width'][colindex] = 3
                 self.signals['type'][colindex] = 22
@@ -2382,7 +2382,7 @@ class PointFigureChart:
             # low pole is any column that is three or more boxes lower than previous low column followed by a column that reverses 50% of the column
             if trends[n] == -1 and lows[n] < lows[n - 2] - 3 and heights[n]/heights[n + 1] > 0.5:
                 colindex = n + 1
-                boxindex = int(highs[n + 1]) - 1
+                boxindex = highs[n + 1] - 1
                 self.signals['box index'][colindex] = boxindex
                 self.signals['width'][colindex] = 3
                 self.signals['type'][colindex] = 23
