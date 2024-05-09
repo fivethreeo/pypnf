@@ -29,6 +29,8 @@ def test_high_pole():
     
     signals = {k:v.tolist() for k, v in chart.get_high_low_poles().items()}
 
+    assert chart.ts['close'][signals['ts index'][3]] == 5
+
     assert signals == {
         'bottom box index': [0.0, 0.0, 0.0, 3.0],
         'box index': [0.0, 0.0, 0.0, 6.0],
@@ -36,7 +38,7 @@ def test_high_pole():
         'type': [0.0, 0.0, 0.0, 22.0],
         'width': [0.0, 0.0, 0.0, 3.0]
     }
-    
+
 # Low Pole
 def test_low_pole():
     chart = PointFigureChart(
@@ -49,8 +51,9 @@ def test_low_pole():
     )
     if show_chart:
         chart.show()
-   
     signals = {k:v.tolist() for k, v in chart.get_high_low_poles().items()}
+
+    assert chart.ts['close'][signals['ts index'][3]] == 6
 
     assert signals == {
         'bottom box index': [0.0, 0.0, 0.0, 3.0],

@@ -181,6 +181,7 @@ class PointFigureChart:
         self.sells = {}
         self.highs_lows_heights_trends = None
         self.signals = None
+        self.ts_signals_map = None
         self.show_breakouts = False
         self.bullish_breakout_color = 'g'
         self.bearish_breakout_color = 'm'
@@ -2239,8 +2240,8 @@ class PointFigureChart:
         # find high and low index for each column; sign indicates trend direction
         T = [np.repeat([np.arange(1, np.size(mtx, 0) + 1, 1)], np.size(mtx, 1), axis=0)][0].transpose() * mtx
 
-        highs = np.zeros(np.size(mtx, 1))
-        lows = np.zeros(np.size(mtx, 1))
+        highs = np.zeros(np.size(mtx, 1), dtype=int)
+        lows = np.zeros(np.size(mtx, 1), dtype=int)
         heights = np.zeros(np.size(mtx, 1))
         trends = np.zeros(np.size(mtx, 1))
 
@@ -2273,18 +2274,29 @@ class PointFigureChart:
             if self.signals['width'][n] == 0:
                 if trends[n] == 1:
                     if highs[n] > highs[n - 2]:
-                        self.signals['box index'][colindex] = highs[n]
+                        boxindex = highs[n]
+                        self.signals['box index'][colindex] = boxindex
                         self.signals['width'][colindex] = 3
                         self.signals['type'][colindex] = 0
                         self.signals['top box index'][colindex] = highs[n]
                         self.signals['bottom box index'][colindex] = lows[n - 1]
+
+                        ts_index = self.action_index_matrix[boxindex, colindex]
+                        self.signals['ts index'][colindex] = ts_index
+                        self.ts_signals_map[ts_index] = colindex
+
                 if trends[n] == -1:
                     if lows[n] < lows[n - 2]:
-                        self.signals['box index'][colindex] = lows[n]
+                        boxindex = lows[n]
+                        self.signals['box index'][colindex] = boxindex
                         self.signals['width'][colindex] = 3
                         self.signals['type'][colindex] = 1
                         self.signals['top box index'][colindex] = highs[n - 1]
-                        self.signals['bottom box index'][colindex] = lows[n]   
+                        self.signals['bottom box index'][colindex] = lows[n]
+
+                        ts_index = self.action_index_matrix[boxindex, colindex]
+                        self.signals['ts index'][colindex] = ts_index
+                        self.ts_signals_map[ts_index] = colindex
 
         return self.signals
 
@@ -2327,11 +2339,16 @@ class PointFigureChart:
         
                 if hits > 3:
                     colindex = self.breakouts["column index"][n]
-                    self.signals['box index'][colindex] = self.breakouts["box index"][n]
+                    boxindex = self.breakouts["box index"][n]
+                    self.signals['box index'][colindex] = boxindex
                     self.signals['width'][colindex] = hits
                     self.signals['type'][colindex] = trend == 1 and 14 or 15
                     self.signals['top box index'][colindex] = np.max(highs[colindex - hits:colindex])
                     self.signals['bottom box index'][colindex] = np.min(lows[colindex - hits:colindex])
+
+                    ts_index = self.action_index_matrix[boxindex, colindex]
+                    self.signals['ts index'][colindex] = ts_index
+                    self.ts_signals_map[ts_index] = colindex
 
         return self.signals
 
@@ -2351,20 +2368,30 @@ class PointFigureChart:
             # high pole is any column that is three or more boxes higher than previous high column followed by a column that reverses 50% of the column
             if trends[n] == 1 and highs[n] > highs[n - 2] + 3 and heights[n]/heights[n + 1] > 0.5:
                 colindex = n + 1
-                self.signals['box index'][colindex] = lows[n + 1]
+                boxindex = int(lows[n + 1])
+                self.signals['box index'][colindex] = boxindex
                 self.signals['width'][colindex] = 3
                 self.signals['type'][colindex] = 22
                 self.signals['top box index'][colindex] = highs[n]
                 self.signals['bottom box index'][colindex] = lows[n - 1]
 
+                ts_index = self.action_index_matrix[boxindex, colindex]
+                self.signals['ts index'][colindex] = ts_index
+                self.ts_signals_map[ts_index] = colindex
+
             # low pole is any column that is three or more boxes lower than previous low column followed by a column that reverses 50% of the column
             if trends[n] == -1 and lows[n] < lows[n - 2] - 3 and heights[n]/heights[n + 1] > 0.5:
                 colindex = n + 1
-                self.signals['box index'][colindex] = highs[n + 1]
+                boxindex = int(highs[n + 1]) - 1
+                self.signals['box index'][colindex] = boxindex
                 self.signals['width'][colindex] = 3
                 self.signals['type'][colindex] = 23
                 self.signals['top box index'][colindex] = highs[n - 1]
                 self.signals['bottom box index'][colindex] = lows[n]
+
+                ts_index = self.action_index_matrix[boxindex, colindex]
+                self.signals['ts index'][colindex] = ts_index
+                self.ts_signals_map[ts_index] = colindex
 
         return self.signals
 
@@ -2397,20 +2424,31 @@ class PointFigureChart:
                 # if the breakout is one box and the next column reverses
                 if trend == 1 and highs[curcol] - highs[prevcol] == 1.0 and heights[nextcol] >= self.reversal:
                     colindex = nextcol
-                    self.signals['box index'][colindex] = lows[nextcol]
+                    boxindex = lows[nextcol]
+                    self.signals['box index'][colindex] = boxindex
                     self.signals['width'][colindex] = 6
                     self.signals['type'][colindex] = 18
                     self.signals['top box index'][colindex] = np.max(highs[curcol - 4: nextcol])
                     self.signals['bottom box index'][colindex] = np.min(lows[curcol - 4: nextcol])
-                # if the breakdown is one box and the next column reverses
+
+                    ts_index = self.action_index_matrix[boxindex, colindex]
+                    self.signals['ts index'][colindex] = ts_index
+                    self.ts_signals_map[ts_index] = colindex
+
+                 # if the breakdown is one box and the next column reverses
                 if trend == -1 and lows[prevcol] - lows[curcol] == 1 and heights[nextcol] >= self.reversal:
                     colindex = nextcol
-                    self.signals['box index'][colindex] = highs[nextcol]
+                    boxindex = highs[nextcol]
+                    self.signals['box index'][colindex] = boxindex
                     self.signals['width'][colindex] = 6
                     self.signals['type'][colindex] = 19
                     self.signals['top box index'][colindex] = np.max(highs[curcol - 4: nextcol])
                     self.signals['bottom box index'][colindex] = np.min(lows[curcol - 4: nextcol])
 
+                    ts_index = self.action_index_matrix[boxindex, colindex]
+                    self.signals['ts index'][colindex] = ts_index
+                    self.ts_signals_map[ts_index] = colindex
+                    
         return self.signals
     
     def get_asc_desc_triple_breakouts(self):
@@ -2434,12 +2472,17 @@ class PointFigureChart:
                 if self.breakouts['trend'][n] == self.breakouts['trend'][n - 1] \
                     and self.breakouts['column index'][n] - 2 == self.breakouts['column index'][n - 1]:
                     colindex = self.breakouts['column index'][n]
-                    self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                    boxindex = self.breakouts['box index'][n]
+                    self.signals['box index'][colindex] = boxindex
                     self.signals['width'][colindex] = 5
                     self.signals['type'][colindex] = self.breakouts['trend'][n] == 1 and 9 or 10
                     self.signals['top box index'][colindex] = np.max(highs[colindex - 4: colindex])
                     self.signals['bottom box index'][colindex] = np.min(lows[colindex - 4: colindex])
 
+                    ts_index = self.action_index_matrix[boxindex, colindex]
+                    self.signals['ts index'][colindex] = ts_index
+                    self.ts_signals_map[ts_index] = colindex
+                    
         return self.signals
 
     def get_catapults(self):
@@ -2464,12 +2507,17 @@ class PointFigureChart:
                     and self.breakouts['column index'][n] - 2 == self.breakouts['column index'][n - 1]:
 
                     colindex = self.breakouts['column index'][n]
-                    self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                    boxindex = self.breakouts['box index'][n]
+                    self.signals['box index'][colindex] = boxindex
                     self.signals['width'][colindex] = 7
                     self.signals['type'][colindex] = self.breakouts['trend'][n] == 1 and 11 or 12
                     self.signals['top box index'][colindex] = np.max(highs[colindex - 6: colindex])
                     self.signals['bottom box index'][colindex] = np.min(lows[colindex - 6: colindex])
 
+                    ts_index = self.action_index_matrix[boxindex, colindex]
+                    self.signals['ts index'][colindex] = ts_index
+                    self.ts_signals_map[ts_index] = colindex
+                    
         return self.signals
     
     def get_reversed_signals(self):
@@ -2493,12 +2541,17 @@ class PointFigureChart:
                         i -= 2
                         c += 2
                     if c >= 3:
-                        self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                        boxindex = self.breakouts['box index'][n]
+                        self.signals['box index'][colindex] = boxindex
                         self.signals['width'][colindex] = colindex - i + 1
                         self.signals['type'][colindex] = 13
                         self.signals['top box index'][colindex] = highs[colindex]
                         self.signals['bottom box index'][colindex] = lows[i - 2]
 
+                        ts_index = self.action_index_matrix[boxindex, colindex]
+                        self.signals['ts index'][colindex] = ts_index
+                        self.ts_signals_map[ts_index] = colindex
+                        
 
                 if self.breakouts['trend'][n] == -1:
                     colindex = self.breakouts['column index'][n]
@@ -2508,12 +2561,17 @@ class PointFigureChart:
                         i -= 2
                         c += 2
                     if c >= 3:
-                        self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                        boxindex = self.breakouts['box index'][n]
+                        self.signals['box index'][colindex] = boxindex
                         self.signals['width'][colindex] = colindex - i + 1
                         self.signals['type'][colindex] = 14
                         self.signals['top box index'][colindex] = highs[i - 2]
                         self.signals['bottom box index'][colindex] = lows[colindex]
 
+                        ts_index = self.action_index_matrix[boxindex, colindex]
+                        self.signals['ts index'][colindex] = ts_index
+                        self.ts_signals_map[ts_index] = colindex
+                    
         return self.signals
 
     def get_double_breakouts(self):
@@ -2535,9 +2593,14 @@ class PointFigureChart:
                 colindex = self.breakouts['column index'][n]
                 # don't overwrite more complex signals
                 if self.signals['width'][colindex] == 0:
-                    self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                    boxindex = self.breakouts['box index'][n]
+                    self.signals['box index'][colindex] = boxindex
                     self.signals['width'][colindex] = self.breakouts['width'][n]
 
+                    ts_index = self.action_index_matrix[boxindex, colindex]
+                    self.signals['ts index'][colindex] = ts_index
+                    self.ts_signals_map[ts_index] = colindex
+                    
                     if self.breakouts['trend'][n] == 1:
                         self.signals['type'][colindex] = 2
                         self.signals['top box index'][colindex] = highs[colindex]
@@ -2567,9 +2630,14 @@ class PointFigureChart:
         for n in np.arange(0, np.size(self.breakouts['column index']), 1):
             if self.breakouts['hits'][n] == 3 and self.breakouts['width'][n] == 5:
                 colindex = self.breakouts['column index'][n]
-                self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                boxindex = self.breakouts['box index'][n]
+                self.signals['box index'][colindex] = boxindex
                 self.signals['width'][colindex] = self.breakouts['width'][n]
 
+                ts_index = self.action_index_matrix[boxindex, colindex]
+                self.signals['ts index'][colindex] = ts_index
+                self.ts_signals_map[ts_index] = colindex
+                
                 if self.breakouts['trend'][n] == 1:
                     self.signals['type'][colindex] = 4
                     self.signals['top box index'][colindex] = highs[colindex]
@@ -2599,9 +2667,14 @@ class PointFigureChart:
         for n in np.arange(0, np.size(self.breakouts['column index']), 1):
             if self.breakouts['hits'][n] == 3 and (self.breakouts['width'][n] == 7 or self.breakouts['width'][n] == 9):
                 colindex = self.breakouts['column index'][n]
-                self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                boxindex = self.breakouts['box index'][n]
+                self.signals['box index'][colindex] = boxindex
                 self.signals['width'][colindex] = self.breakouts['width'][n]
 
+                ts_index = self.action_index_matrix[boxindex, colindex]
+                self.signals['ts index'][colindex] = ts_index
+                self.ts_signals_map[ts_index] = colindex
+                
                 if self.breakouts['trend'][n] == 1:
                     self.signals['type'][colindex] = 19
                     self.signals['top box index'][colindex] = highs[colindex]
@@ -2631,9 +2704,14 @@ class PointFigureChart:
         for n in np.arange(0, np.size(self.breakouts['column index']), 1):
             if self.breakouts['hits'][n] == 4 and self.breakouts['width'][n] == 7:
                 colindex = self.breakouts['column index'][n]
-                self.signals['box index'][colindex] = self.breakouts['box index'][n]
+                boxindex = self.breakouts['box index'][n]
+                self.signals['box index'][colindex] = boxindex
                 self.signals['width'][colindex] = self.breakouts['width'][n]
 
+                ts_index = self.action_index_matrix[boxindex, colindex]
+                self.signals['ts index'][colindex] = ts_index
+                self.ts_signals_map[ts_index] = colindex
+                
                 if self.breakouts['trend'][n] == 1:
                     self.signals['type'][colindex] = 6
                     self.signals['top box index'][colindex] = highs[colindex]
@@ -2652,12 +2730,14 @@ class PointFigureChart:
         """
         if not self.signals:
             self.signals = {
-                'box index': np.zeros(np.size(self.matrix, 1)),
-                'top box index': np.zeros(np.size(self.matrix, 1)),
-                'bottom box index': np.zeros(np.size(self.matrix, 1)),
-                'type': np.zeros(np.size(self.matrix, 1)),
-                'width': np.zeros(np.size(self.matrix, 1))
+                'box index': np.zeros(np.size(self.matrix, 1), dtype=int),
+                'top box index': np.zeros(np.size(self.matrix, 1), dtype=int),
+                'bottom box index': np.zeros(np.size(self.matrix, 1), dtype=int),
+                'type': np.zeros(np.size(self.matrix, 1), dtype=int),
+                'width': np.zeros(np.size(self.matrix, 1), dtype=int),
+                'ts index': np.zeros(np.size(self.matrix, 1), dtype=int)
             }
+            self.ts_signals_map = np.zeros(np.size(self.pnf_timeseries['box index']), dtype=int)
 
     def get_signals(self):
         """
