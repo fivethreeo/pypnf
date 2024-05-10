@@ -29,7 +29,15 @@ def test_spread_triple_breakout():
  
     signals = {k:v.tolist() for k, v in chart.get_spread_triple_breakouts().items()}
 
-    assert signals == {}
+    assert signals == {
+        'bottom box index': [0, 0, 0, 0, 0, 0, 2],
+        'box index': [0, 0, 0, 0, 0, 0, 9],
+        'top box index': [0, 0, 0, 0, 0, 0, 10],
+        'ts index': [0, 0, 0, 0, 0, 0, 7],
+        'type': [0, 0, 0, 0, 0, 0, 19],
+        'width': [0, 0, 0, 0, 0, 0, 7]
+    }
+
 
 def test_spread_triple_breakdown():
     chart = PointFigureChart(
@@ -45,4 +53,11 @@ def test_spread_triple_breakdown():
     
     signals = {k:v.tolist() for k, v in chart.get_spread_triple_breakouts().items()}
 
-    assert signals == {}
+    assert signals == {
+        'bottom box index': [0, 0, 0, 0, 0, 0, 2],
+        'box index': [0, 0, 0, 0, 0, 0, 1],
+        'top box index': [0, 0, 0, 0, 0, 0, 10],
+        'ts index': [0, 0, 0, 0, 0, 0, 7],
+        'type': [0, 0, 0, 0, 0, 0, 20],
+        'width': [0, 0, 0, 0, 0, 0, 7]
+    }

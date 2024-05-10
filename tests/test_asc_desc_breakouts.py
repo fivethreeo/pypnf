@@ -31,11 +31,12 @@ def test_asc_desc_triple_breakout():
     signals = {k:v.tolist() for k, v in chart.get_asc_desc_triple_breakouts().items()}
 
     assert signals == {
-        'bottom box index': [0.0, 0.0, 0.0, 0.0, 0.0, 3.0],
-        'box index': [0.0, 0.0, 0.0, 0.0, 0.0, 8.0],
-        'top box index': [0.0, 0.0, 0.0, 0.0, 0.0, 8.0],
-        'type': [0.0, 0.0, 0.0, 0.0, 0.0, 9.0],
-        'width': [0.0, 0.0, 0.0, 0.0, 0.0, 5.0]
+        'bottom box index': [0, 0, 0, 0, 0, 3],
+        'box index': [0, 0, 0, 0, 0, 8],
+        'top box index': [0, 0, 0, 0, 0, 8],
+        'ts index': [0, 0, 0, 0, 0, 6],
+        'type': [0, 0, 0, 0, 0, 9],
+        'width': [0, 0, 0, 0, 0, 5]
     }
 
 def test_asc_desc_triple_breakdown():
@@ -53,9 +54,10 @@ def test_asc_desc_triple_breakdown():
     signals = {k:v.tolist() for k, v in chart.get_asc_desc_triple_breakouts().items()}
 
     assert signals == {
-        'bottom box index': [0.0, 0.0, 0.0, 0.0, 0.0, 3.0],
-        'box index': [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-        'top box index': [0.0, 0.0, 0.0, 0.0, 0.0, 9.0],
-        'type': [0.0, 0.0, 0.0, 0.0, 0.0, 10.0],
-        'width': [0.0, 0.0, 0.0, 0.0, 0.0, 5.0]
+        'bottom box index': [0, 0, 0, 0, 0, 3],
+        'box index': [0, 0, 0, 0, 0, 1],
+        'top box index': [0, 0, 0, 0, 0, 9],
+        'ts index': [0, 0, 0, 0, 0, 6],
+        'type': [0, 0, 0, 0, 0, 10],
+        'width': [0, 0, 0, 0, 0, 5]
     }

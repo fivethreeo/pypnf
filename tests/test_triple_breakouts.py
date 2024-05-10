@@ -28,8 +28,15 @@ def test_triple_breakout():
  
     signals = {k:v.tolist() for k, v in chart.get_triple_breakouts().items()}
 
-    assert signals == {}
-
+    assert signals == {
+        'bottom box index': [0, 0, 0, 0, 0, 2],
+        'box index': [0, 0, 0, 0, 0, 8],
+        'top box index': [0, 0, 0, 0, 0, 9],
+        'ts index': [0, 0, 0, 0, 0, 6],
+        'type': [0, 0, 0, 0, 0, 4],
+        'width': [0, 0, 0, 0, 0, 5]
+    }
+    
 def test_triple_breakdown():
     chart = PointFigureChart(
         {"close": test_triple_breakdown_data},
@@ -44,4 +51,11 @@ def test_triple_breakdown():
     
     signals = {k:v.tolist() for k, v in chart.get_triple_breakouts().items()}
 
-    assert signals == {}
+    assert signals == {
+        'bottom box index': [0, 0, 0, 0, 0, 2],
+        'box index': [0, 0, 0, 0, 0, 1],
+        'top box index': [0, 0, 0, 0, 0, 9],
+        'ts index': [0, 0, 0, 0, 0, 6],
+        'type': [0, 0, 0, 0, 0, 5],
+        'width': [0, 0, 0, 0, 0, 5]
+    }

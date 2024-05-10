@@ -28,7 +28,15 @@ def test_double_breakout():
 
     signals = {k:v.tolist() for k, v in chart.get_double_breakouts().items()}
 
-    assert signals == {}
+    assert signals == {
+        'bottom box index': [0, 0, 0, 2],
+        'box index': [0, 0, 0, 7],
+        'top box index': [0, 0, 0, 8],
+        'ts index': [0, 0, 0, 4],
+        'type': [0, 0, 0, 2],
+        'width': [0, 0, 0, 3]
+    }
+
 
 def test_double_breakdown():
     chart = PointFigureChart(
@@ -44,4 +52,11 @@ def test_double_breakdown():
     
     signals = {k:v.tolist() for k, v in chart.get_double_breakouts().items()}
 
-    assert signals == {}
+    assert signals == {
+        'bottom box index': [0, 0, 0, 2],
+        'box index': [0, 0, 0, 1],
+        'top box index': [0, 0, 0, 8],
+        'ts index': [0, 0, 0, 4],
+        'type': [0, 0, 0, 3],
+        'width': [0, 0, 0, 3]
+    }

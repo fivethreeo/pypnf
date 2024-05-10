@@ -30,13 +30,13 @@ def test_bullish_catapult():
     signals = {k:v.tolist() for k, v in chart.get_catapults().items()}
 
     assert signals == {
-        'bottom box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 2.0],
-        'box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.0],
-        'top box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.0],
-        'type': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 11.0],
-        'width': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.0]
+        'bottom box index': [0, 0, 0, 0, 0, 0, 0, 2],
+        'box index': [0, 0, 0, 0, 0, 0, 0, 7],
+        'top box index': [0, 0, 0, 0, 0, 0, 0, 7],
+        'ts index': [0, 0, 0, 0, 0, 0, 0, 10],
+        'type': [0, 0, 0, 0, 0, 0, 0, 11],
+        'width': [0, 0, 0, 0, 0, 0, 0, 7]
     }
-
 
 def test_bearish_catapult():
     chart = PointFigureChart(
@@ -53,9 +53,10 @@ def test_bearish_catapult():
     signals = {k:v.tolist() for k, v in chart.get_catapults().items()}
 
     assert signals == {
-        'bottom box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.0],
-        'box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
-        'top box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.0],
-        'type': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.0],
-        'width': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.0]
+        'bottom box index': [0, 0, 0, 0, 0, 0, 0, 3],
+        'box index': [0, 0, 0, 0, 0, 0, 0, 1],
+        'top box index': [0, 0, 0, 0, 0, 0, 0, 7],
+        'ts index': [0, 0, 0, 0, 0, 0, 0, 8],
+        'type': [0, 0, 0, 0, 0, 0, 0, 12],
+        'width': [0, 0, 0, 0, 0, 0, 0, 7]
     }

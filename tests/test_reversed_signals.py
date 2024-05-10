@@ -31,11 +31,12 @@ def test_bullish_signal_reversed():
     signals = {k:v.tolist() for k, v in chart.get_reversed_signals().items()}
 
     assert signals == {
-        'bottom box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0],
-        'box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0],
-        'top box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.0],
-        'type': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 14.0],
-        'width': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.0]
+        'bottom box index': [0, 0, 0, 0, 0, 0, 0, 5],
+        'box index': [0, 0, 0, 0, 0, 0, 0, 4],
+        'top box index': [0, 0, 0, 0, 0, 0, 0, 7],
+        'ts index': [0, 0, 0, 0, 0, 0, 0, 8],
+        'type': [0, 0, 0, 0, 0, 0, 0, 14],
+        'width': [0, 0, 0, 0, 0, 0, 0, 6]
     }
 
 # Bearish Signal Reversed
@@ -54,9 +55,11 @@ def test_bearish_signal_reversed():
     signals = {k:v.tolist() for k, v in chart.get_reversed_signals().items()}
 
     assert signals == {
-        'bottom box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.0],
-        'box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 8.0],
-        'top box index': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 9.0],
-        'type': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 13.0],
-        'width': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 6.0]
+        'bottom box index': [0, 0, 0, 0, 0, 0, 0, 7],
+        'box index': [0, 0, 0, 0, 0, 0, 0, 8],
+        'top box index': [0, 0, 0, 0, 0, 0, 0, 9],
+        'ts index': [0, 0, 0, 0, 0, 0, 0, 8],
+        'type': [0, 0, 0, 0, 0, 0, 0, 13],
+        'width': [0, 0, 0, 0, 0, 0, 0, 6]
     }
+

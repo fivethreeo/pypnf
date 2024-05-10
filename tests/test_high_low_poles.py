@@ -32,13 +32,15 @@ def test_high_pole():
     assert chart.ts['close'][signals['ts index'][3]] == 5
 
     assert signals == {
-        'bottom box index': [0.0, 0.0, 0.0, 3.0],
-        'box index': [0.0, 0.0, 0.0, 6.0],
-        'top box index': [0.0, 0.0, 0.0, 11.0],
-        'type': [0.0, 0.0, 0.0, 22.0],
-        'width': [0.0, 0.0, 0.0, 3.0]
+        'bottom box index': [0, 0, 0, 3],
+        'box index': [0, 0, 0, 6],
+        'top box index': [0, 0, 0, 11],
+        'ts index': [0, 0, 0, 4],
+        'type': [0, 0, 0, 22],
+        'width': [0, 0, 0, 3]
     }
 
+    
 # Low Pole
 def test_low_pole():
     chart = PointFigureChart(
@@ -56,9 +58,10 @@ def test_low_pole():
     assert chart.ts['close'][signals['ts index'][3]] == 6
 
     assert signals == {
-        'bottom box index': [0.0, 0.0, 0.0, 3.0],
-        'box index': [0.0, 0.0, 0.0, 7.0],
-        'top box index': [0.0, 0.0, 0.0, 11.0],
-        'type': [0.0, 0.0, 0.0, 23.0],
-        'width': [0.0, 0.0, 0.0, 3.0]
+        'bottom box index': [0, 0, 0, 3],
+        'box index': [0, 0, 0, 6],
+        'top box index': [0, 0, 0, 11],
+        'ts index': [0, 0, 0, 4],
+        'type': [0, 0, 0, 23],
+        'width': [0, 0, 0, 3]
     }
