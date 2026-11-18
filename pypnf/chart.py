@@ -24,16 +24,14 @@
 The chart module of the pyPnF package contains the main class PointFigureChart.
 The class handles the chart parameter and contains basic attributes like breakouts and trendlines.
 """
-from importlib.resources import files
-
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.lines import Line2D
 from tabulate import tabulate
-import json
-import re
-import datetime
 from warnings import warn
+
+from .counts import horizontal_counts, vertical_counts
+from .html_export import write_html
 
 
 class PointFigureChart:
@@ -2070,6 +2068,31 @@ class PointFigureChart:
 
         return psar
 
+    def get_vertical_counts(self, column=None):
+        """Return automatic candidate targets, or count one zero-based column.
+
+        Counting columns must be complete and follow an opposite-direction
+        column. Targets use that preceding column's low/high as the anchor.
+        Results distinguish establishment, activation, achievement and negation.
+        Explicit selection leaves assessment of the column's significance to
+        the caller. Absolute and log scales with reversals >= 2 are supported.
+        See du Plessis, chapter 4, pp. 221-229 and 249-251.
+        """
+        return vertical_counts(self, column)
+
+    def get_horizontal_counts(self, start_column=None, end_column=None, method=None, count_row=None):
+        """Return candidate targets or count an inclusive, zero-based range.
+
+        With no range, detect conservative Cohen top/bottom wall patterns.
+        Cohen counts include both walls and activate on the exit breakout.
+        Use method='activity' for row-based counts, including one-box charts;
+        these require a range and return both directional projections. Specify
+        count_row when most-active rows tie, or to choose a row explicitly.
+        Only absolute and log scales are supported. See du Plessis, chapter 4,
+        pp. 207-209, 230-239 and 249-252.
+        """
+        return horizontal_counts(self, start_column, end_column, method, count_row)
+
     def next_simple_signal(self):
 
         next_buy = np.nan
@@ -2930,73 +2953,9 @@ class PointFigureChart:
 
     def write_html(self, fname='pnf_chart.html', date_format='%Y-%m-%d', template=None):
         """
-        Saves the Point and Figure chart as an SVG in HTML file.
+        Save a standalone, interactive Canvas chart, or use a custom HTML template.
         """
-        self._prepare_variables_for_plotting()
-        self.show_trendlines = 'external'
-        if template is not None:
-            with open(template, 'r') as f:
-                html = f.read()
-        else:
-            file = 'html/svg_in_html.html'
-            html = files('pypnf').joinpath(file).read_text()
-
-        pattern = r'let title = \".*?\";'
-        data_str = json.dumps(self.title)
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let title = {data_str};', html, flags=re.DOTALL)
-        pattern = r'let scaling = \".*?\";'
-        data_str = json.dumps(self.scaling)
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let scaling = {data_str};', html, flags=re.DOTALL)
-        pattern = r'let boxSize = .*?;'
-        data_str = json.dumps(self.boxsize)
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let boxSize = {data_str};', html, flags=re.DOTALL)
-        pattern = r'let matrix = \[.*?\];'
-        data_str = json.dumps(self.plot_matrix.tolist())
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let matrix = {data_str};', html, flags=re.DOTALL)
-        pattern = r'let boxScale = \[.*?\];'
-        data_str = json.dumps(self.plot_boxscale.tolist())
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let boxScale = {data_str};', html, flags=re.DOTALL)
-        pattern = r'let trendLines = \{.*?\};'
-        data_str = json.dumps({k: v.tolist() for k, v in self.get_trendlines().items()})
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let trendLines = {data_str};', html, flags=re.DOTALL)
-        pattern = r'let breakOuts = \{.*?\};'
-        bo = self.get_breakouts()
-        if isinstance(bo['ts index'], np.ndarray) and np.issubdtype(bo['ts index'].dtype, np.datetime64):
-            bo['ts index'] = np.array([d.astype(datetime.datetime).strftime(date_format) for d in bo['ts index']])
-        bo = {k: v.tolist() for k, v in bo.items()}
-        data_str = json.dumps(bo)
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let breakOuts = {data_str};', html, flags=re.DOTALL)
-        pattern = r'let indicators = \{.*?\};'
-        data_str = json.dumps({k: v.tolist() for k, v in self.plot_indicator.items()})
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let indicators = {data_str};', html, flags=re.DOTALL)
-        pattern = r'let columnLabels = \[.*?\];'
-        # if column_labels are datetime objects, convert to string
-        if isinstance(self.column_labels, np.ndarray) and np.issubdtype(self.column_labels.dtype, np.datetime64):
-            column_labels = np.array([d.astype(datetime.datetime).strftime(date_format) for d in self.column_labels])
-        else:
-            column_labels = self.column_labels
-        data_str = json.dumps(column_labels)
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let columnLabels = {data_str};', html, flags=re.DOTALL)
-        pattern = r' let matrix_bottom_cut_index = .*?;'
-        data_str = json.dumps(self.matrix_bottom_cut_index.item())
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let matrix_bottom_cut_index = {data_str};', html, flags=re.DOTALL)
-        pattern = r' let matrix_top_cut_index = .*?;'
-        data_str = json.dumps(self.matrix_top_cut_index.item())
-        # Replace the matched pattern with the new data string
-        html = re.sub(pattern, f'let matrix_top_cut_index = {data_str};', html, flags=re.DOTALL)
-
-        with open(fname, 'w') as f:
-            f.write(html)
+        write_html(self, fname, date_format, template)
 
 if __name__ == '__main__':
 

@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Point &amp; Figure chart</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 28rem;
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        color: #17212b;
+        background: white;
+        font: 1rem/1.5 system-ui, sans-serif;
+      }
+      header, footer { padding: .75rem 1rem; }
+      h1 { margin: 0 0 .5rem; font-size: 1.125rem; overflow-wrap: anywhere; }
+      #controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
+      button, label { font: inherit; }
+      button { padding: .25rem .6rem; cursor: pointer; }
+      label { display: inline-flex; align-items: center; gap: .3rem; cursor: pointer; }
+      input { accent-color: currentColor; }
+      main { position: relative; flex: 1; min-height: 22rem; }
+      canvas { position: absolute; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+      canvas:focus-visible { outline: 2px solid #185abc; outline-offset: -2px; }
+      canvas.over-target { cursor: pointer; }
+      canvas.dragging { cursor: grabbing; }
+      #target-info {
+        position: absolute;
+        width: 28rem;
+        max-width: calc(100% - 1.5rem);
+        max-height: calc(100% - 1.5rem);
+        padding: .75rem;
+        overflow: auto;
+        overscroll-behavior: contain;
+        overflow-wrap: anywhere;
+        background: white;
+        border: 1px solid #78838c;
+        border-radius: .4rem;
+        box-shadow: 0 .25rem 1rem #17212b26;
+      }
+      #target-info h2 { margin: 0 0 .5rem; font-size: 1rem; }
+      .info-header { position: sticky; top: 0; display: flex; flex-wrap: wrap; align-items: center; gap: .75rem; padding-bottom: .5rem; margin-bottom: .5rem; background: white; }
+      .drag-info { flex: 1; text-align: left; cursor: grab; touch-action: none; user-select: none; }
+      .drag-info.dragging { cursor: grabbing; }
+      #target-info p { margin: .5rem 0 0; }
+      #target-info dl { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: .3rem .75rem; margin: 0; }
+      #target-info dt { font-weight: 600; }
+      #target-info dd { margin: 0; white-space: pre-line; }
+      #target-info section + section { border-top: 1px solid #ddd; margin-top: .75rem; padding-top: .75rem; }
+      @media (max-width: 40rem) {
+        #target-info dl { display: block; }
+        #target-info dd { margin-bottom: .5rem; }
+      }
+      footer { border-top: 1px solid #ddd; }
+      footer p { margin: 0; }
+      #status:empty { display: none; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1 id="title">Point &amp; Figure chart</h1>
+      <nav id="controls" aria-label="Chart controls">
+        <button id="recent" type="button">Latest 50</button>
+        <button id="fit" type="button">Fit all</button>
+        <button id="fit-targets" type="button">Fit targets</button>
+        <button id="grid-only" type="button">Grid only</button>
+        <button id="zoom-in" type="button" aria-label="Zoom in">+</button>
+        <button id="zoom-out" type="button" aria-label="Zoom out">-</button>
+        <label><input id="grid" type="checkbox" checked>Grid</label>
+        <label><input id="trends" type="checkbox" checked>Trendlines</label>
+        <label><input id="breakouts" type="checkbox" checked>Breakouts</label>
+        <label><input id="vertical-targets" type="checkbox" checked>Vertical targets (<span id="vertical-count">0</span>)</label>
+        <label><input id="horizontal-targets" type="checkbox" checked>Horizontal targets (<span id="horizontal-count">0</span>)</label>
+        <label><input id="achieved-targets" type="checkbox">Achieved targets (<span id="achieved-count">0</span>)</label>
+      </nav>
+    </header>
+    <main>
+      <canvas id="chart" tabindex="0" role="img" aria-label="Interactive Point and Figure chart"
+              aria-describedby="help status target-info">
+        This interactive chart requires JavaScript and Canvas support.
+      </canvas>
+      <aside id="target-info" role="region" aria-label="Count target details" tabindex="0" hidden></aside>
+    </main>
+    <footer>
+      <p id="status" role="status">Loading chart...</p>
+      <p id="help">Drag to pan. Scroll or pinch to zoom. Focus the chart for arrow keys,
+        +/- to zoom, or Home to reset. Green X: rising; red O: falling.
+        V/H: active count-target candidates. Fit targets includes off-screen levels.
+        Blue triangles mark activation prices and columns; hover to trace the target.
+        On target hover, a hairline connects the activation price horizontally to the price axis.
+        Enable Achieved targets for muted historical lines ending at diamond markers.
+        Hover a target line, label or marker to highlight it and its columns (numbered from 1).
+        Click for details. Drag the card's handle to move it; scroll its contents for overlapping targets.
+        Escape dismisses it.
+        Grid only hides overlays, keeping X/O price symbols.</p>
+    </footer>
+    <script id="chart-data" type="application/octet-stream">__PYPNF_CHART_DATA__</script>
+    <script>
+      "use strict";
+
+      async function loadChart() {
+        if (typeof DecompressionStream === "undefined") {
+          throw new Error("This chart requires a browser with gzip DecompressionStream support.");
+        }
+        const encoded = document.getElementById("chart-data").textContent.trim();
+        const bytes = Uint8Array.from(atob(encoded), character => character.charCodeAt(0));
+        const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+        const data = await new Response(stream).json();
+        document.getElementById("chart-data").remove();
+        document.title = data.title;
+        document.getElementById("title").textContent = data.title;
+        createChart(data);
+      }
+
+      function createChart(data) {
+        const canvas = document.getElementById("chart");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas 2D is not available in this browser.");
+        const rows = data.boxScale.length;
+        const columns = data.columns.length;
+        const status = document.getElementById("status");
+        const controls = document.getElementById("controls");
+        const targetInfo = document.getElementById("target-info");
+        const palette = ["#2455b2", "#a63676", "#00766d", "#8a5300", "#663db0", "#405b25"];
+        const targetStyles = {
+          vertical: { color: "#663db0", muted: "#897b99", dash: [8, 4], prefix: "V" },
+          horizontal: { color: "#9b4f00", muted: "#927f6c", dash: [2, 4], prefix: "H" },
+        };
+        const targets = (data.targets || [])
+          .filter(target => (target.status === "active" || target.status === "achieved")
+            && targetStyles[target.type] && Number.isFinite(target.target)
+            && (target.status !== "achieved" || (Number.isInteger(target["achieved column"])
+              && Number.isInteger(target["activated column"] ?? target["end column"])
+              && target["achieved column"] >= (target["activated column"] ?? target["end column"]))))
+          .map(target => ({
+            ...target, row: priceRow(target.target),
+            activationRow: Number.isFinite(target.activation) ? priceRow(target.activation) : NaN,
+          }))
+          .filter(target => Number.isFinite(target.row));
+        let targetHits = [];
+        let hoveredTargets = [];
+        let selectedTargets = [];
+        let infoDrag = null;
+        let pointerStart = null, suppressClick = false;
+        const view = { x: 0, y: 0, cell: 18 };
+        let plot, width, height, fontSize, font, frame = null;
+        let ratio = 1;
+        const pointers = new Map();
+        const indicators = [];
+
+        for (const [type, style] of Object.entries(targetStyles)) {
+          const count = targets.filter(target => target.type === type && target.status === "active").length;
+          const input = document.getElementById(`${type}-targets`);
+          input.disabled = count === 0;
+          input.checked = count > 0;
+          input.closest("label").style.color = style.color;
+          document.getElementById(`${type}-count`).textContent = count;
+        }
+        const achievedCount = targets.filter(target => target.status === "achieved").length;
+        const achievedInput = document.getElementById("achieved-targets");
+        achievedInput.disabled = achievedCount === 0;
+        document.getElementById("achieved-count").textContent = achievedCount;
+        document.getElementById("fit-targets").disabled = targets.length === 0;
+
+        for (const [key, values] of Object.entries(data.indicators)) {
+          if (key.endsWith("-lower")) continue;
+          const index = indicators.length;
+          const input = document.createElement("input");
+          input.type = "checkbox";
+          input.checked = true;
+          const label = document.createElement("label");
+          label.style.color = palette[index % palette.length];
+          label.append(input, document.createTextNode(key.replace(/-upper$/, "")));
+          controls.appendChild(label);
+          input.addEventListener("change", scheduleDraw);
+          indicators.push({
+            key, values, input, color: palette[index % palette.length],
+            lower: key.endsWith("-upper") ? data.indicators[key.replace(/-upper$/, "-lower")] : null,
+            psar: key.includes("pSAR"),
+          });
+        }
+
+        const x = column => plot.left + view.x + (column + .5) * view.cell;
+        const y = row => plot.top + view.y + (rows - row - .5) * view.cell;
+        const number = value => value.toLocaleString("en-US", { maximumFractionDigits: 8 });
+        const targetNumber = value => value.toLocaleString("en-US", {
+          maximumFractionDigits: Math.abs(value) >= 100 ? 2 : Math.abs(value) >= 10 ? 3 : Math.abs(value) >= 1 ? 4 : 6,
+        });
+
+        function priceRow(price) {
+          if (data.scaling === "abs") return (price - data.boxScale[0]) / data.boxSize;
+          if (data.scaling === "log" && price > 0) {
+            return Math.log(price / data.boxScale[0]) / Math.log1p(data.boxSize / 100);
+          }
+          return NaN;
+        }
+
+        function rowPrice(row) {
+          if (row >= 0 && row < rows) return data.boxScale[row];
+          if (data.scaling === "abs") return data.boxScale[0] + row * data.boxSize;
+          if (data.scaling === "log") return data.boxScale[0] * Math.exp(row * Math.log1p(data.boxSize / 100));
+          return NaN;
+        }
+
+        function enabledTargets() {
+          return targets.filter(target => target.status === "achieved"
+            ? achievedInput.checked : document.getElementById(`${target.type}-targets`).checked);
+        }
+
+        function sourceColumns(target) {
+          const start = target["start column"], end = target["end column"];
+          const first = Math.max(0, start - data.columnOffset);
+          const last = Math.min(columns - 1, end - data.columnOffset);
+          const left = x(first - .5), right = x(last + .5);
+          const location = first > last ? "Not in exported data"
+            : right <= plot.left ? "Off-screen left"
+            : left >= plot.left + plot.width ? "Off-screen right"
+            : first !== start - data.columnOffset || last !== end - data.columnOffset ? "Partially omitted by export trimming" : "In view";
+          return { first, last, left, right, location };
+        }
+
+        function columnDescription(column) {
+          const label = data.columnLabels[column - data.columnOffset];
+          return `${column + 1}${label === undefined ? " (not in export)" : ` (${label})`}`;
+        }
+
+        function activationPoint(target) {
+          if (!Number.isInteger(target["activated column"]) || !Number.isFinite(target.activationRow)) return null;
+          const column = target["activated column"] - data.columnOffset;
+          return { column, px: x(column), py: y(target.activationRow) };
+        }
+
+        function activationLocation(point) {
+          if (!point) return "Not recorded";
+          if (point.column < 0 || point.column >= columns) return "Not in exported data";
+          if (point.px < plot.left) return "Off-screen left";
+          if (point.px > plot.left + plot.width) return "Off-screen right";
+          if (point.py < plot.top) return "Above view";
+          if (point.py > plot.top + plot.height) return "Below view";
+          return "In view";
+        }
+
+        function targetInfoBounds() {
+          const rect = canvas.getBoundingClientRect(), margin = fontSize * .75;
+          return {
+            margin,
+            left: Math.max(margin, margin - rect.left),
+            top: Math.max(margin, margin - rect.top),
+            right: Math.min(width, document.documentElement.clientWidth - rect.left) - margin,
+            bottom: Math.min(height, window.innerHeight - rect.top) - margin,
+          };
+        }
+
+        function moveTargetInfo(left, top) {
+          const bounds = targetInfoBounds();
+          targetInfo.style.left = `${Math.max(bounds.left, Math.min(left, bounds.right - targetInfo.offsetWidth))}px`;
+          targetInfo.style.top = `${Math.max(bounds.top, Math.min(top, bounds.bottom - targetInfo.offsetHeight))}px`;
+        }
+
+        function finishInfoDrag() {
+          if (!infoDrag) return;
+          const { handle, pointerId } = infoDrag;
+          infoDrag = null;
+          handle.classList.remove("dragging");
+          if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
+        }
+
+        function showTargetInfo(targets, position) {
+          finishInfoDrag();
+          targetInfo.replaceChildren();
+          const header = document.createElement("div");
+          header.className = "info-header";
+          const handle = document.createElement("button");
+          handle.type = "button";
+          handle.className = "drag-info";
+          handle.textContent = "Drag to move";
+          handle.setAttribute("aria-label", "Move info card. Drag or use arrow keys.");
+          const close = document.createElement("button");
+          close.type = "button";
+          close.className = "close-info";
+          close.textContent = "Close";
+          close.addEventListener("click", () => {
+            clearTargetInfo();
+            canvas.focus({ preventScroll: true });
+          });
+          header.append(handle, close);
+          targetInfo.append(header);
+          for (const target of targets) {
+            const section = document.createElement("section");
+            const heading = document.createElement("h2");
+            heading.textContent = `${target.status === "achieved" ? "Achieved " : ""}${target.type === "vertical" ? "Vertical" : "Horizontal"} ${target.trend === 1 ? "upside" : "downside"} target`;
+            heading.style.color = target.status === "achieved" ? targetStyles[target.type].muted : targetStyles[target.type].color;
+            const details = document.createElement("dl");
+            const add = (name, value) => {
+              const term = document.createElement("dt"), description = document.createElement("dd");
+              term.textContent = name;
+              description.textContent = value;
+              details.append(term, description);
+            };
+            add("Target price", number(target.target));
+            add("Status", target.status);
+            if (target.method) add("Method", target.method);
+            const start = target["start column"], end = target["end column"];
+            add(start === end ? "Source column" : "Source columns",
+              start === end ? columnDescription(start) : `${columnDescription(start)}\nto ${columnDescription(end)}`);
+            add("Source location", sourceColumns(target).location);
+            if (Number.isFinite(target.count)) {
+              add("Count", `${number(target.count)} ${target.type === "vertical" ? "boxes" : "columns"}`);
+            }
+            add("Box size", `${number(data.boxSize)}${data.scaling === "log" ? "%" : ""} (${data.scaling === "log" ? "logarithmic" : "arithmetic"})`);
+            if (Number.isFinite(data.reversal)) add("Reversal", `${number(data.reversal)} boxes`);
+            if (Number.isFinite(target.anchor)) add("Anchor price", number(target.anchor));
+            if (Number.isFinite(target.activation)) add("Activation price", number(target.activation));
+            if (Number.isInteger(target["activated column"])) {
+              add("Activated in", columnDescription(target["activated column"]));
+              add("Activation location", activationLocation(activationPoint(target)));
+            }
+            if (Number.isInteger(target["achieved column"])) add("Achieved in", columnDescription(target["achieved column"]));
+            if (Number.isFinite(target.negation)) add("Negation price", number(target.negation));
+            section.append(heading, details);
+            if (Number.isFinite(target.count) && Number.isFinite(target.anchor) && Number.isFinite(data.reversal)) {
+              const calculation = document.createElement("p");
+              const sign = target.trend === 1 ? "+" : "-";
+              calculation.textContent = data.scaling === "log"
+                ? `Calculation: ${number(target.anchor)} x (1 + ${number(data.boxSize)} / 100)^(${sign}${number(target.count)} x ${number(data.reversal)}) = ${number(target.target)}`
+                : `Calculation: ${number(target.anchor)} ${sign} ${number(target.count)} x ${number(data.boxSize)} x ${number(data.reversal)} = ${number(target.target)}`;
+              section.append(calculation);
+            }
+            if (target.reason) {
+              const reason = document.createElement("p");
+              reason.textContent = `Pattern: ${target.reason}`;
+              section.append(reason);
+            }
+            targetInfo.append(section);
+          }
+          targetInfo.hidden = false;
+          const { margin, left, top, right, bottom } = targetInfoBounds();
+          targetInfo.style.maxWidth = `${Math.max(1, right - left)}px`;
+          targetInfo.style.maxHeight = `${Math.max(1, (bottom - top) * .8)}px`;
+          const cardWidth = targetInfo.offsetWidth, cardHeight = targetInfo.offsetHeight;
+          let px = position.x + margin;
+          if (px + cardWidth > right) px = position.x - cardWidth - margin;
+          px = Math.max(left, Math.min(px, right - cardWidth));
+          const py = Math.max(top, Math.min(position.y + margin, bottom - cardHeight));
+          const activation = targets.map(activationPoint).find(point => activationLocation(point) === "In view");
+          if (activation && activation.px >= px && activation.px <= px + cardWidth
+              && activation.py >= py && activation.py <= py + cardHeight) {
+            if (activation.px - margin - cardWidth >= left) px = activation.px - margin - cardWidth;
+            else if (activation.px + margin + cardWidth <= right) px = activation.px + margin;
+          }
+          targetInfo.style.left = `${px}px`;
+          targetInfo.style.top = `${py}px`;
+        }
+
+        function setHoveredTargets(next = []) {
+          if (next.length === hoveredTargets.length && next.every((target, index) => target === hoveredTargets[index])) return;
+          hoveredTargets = next;
+          canvas.classList.toggle("over-target", next.length > 0);
+          scheduleDraw();
+        }
+
+        function clearTargetInfo() {
+          finishInfoDrag();
+          selectedTargets = [];
+          targetInfo.hidden = true;
+          targetInfo.replaceChildren();
+          setHoveredTargets();
+          scheduleDraw();
+        }
+
+        function highlightedTargets() {
+          return [...new Set([...selectedTargets, ...hoveredTargets])];
+        }
+
+        function targetsAt(position) {
+          const inside = position.x >= plot.left && position.x <= plot.left + plot.width
+            && position.y >= plot.top && position.y <= plot.top + plot.height;
+          return inside ? [...new Set(targetHits
+            .filter(hit => position.x >= hit.left && position.x <= hit.right && position.y >= hit.top && position.y <= hit.bottom)
+            .flatMap(hit => hit.targets))] : [];
+        }
+
+        function drawTargetSources() {
+          ctx.save();
+          ctx.setLineDash([]);
+          ctx.lineWidth = 2;
+          for (const target of highlightedTargets()) {
+            const { first, last, left, right } = sourceColumns(target);
+            const style = targetStyles[target.type];
+            const visibleLeft = Math.max(plot.left, left);
+            const visibleRight = Math.min(plot.left + plot.width, right);
+            if (first <= last && visibleRight > visibleLeft) {
+              ctx.fillStyle = style.color;
+              ctx.globalAlpha = .14;
+              ctx.fillRect(visibleLeft, plot.top, visibleRight - visibleLeft, plot.height);
+              ctx.globalAlpha = 1;
+              ctx.strokeStyle = style.color;
+              ctx.strokeRect(visibleLeft, plot.top, visibleRight - visibleLeft, plot.height);
+            }
+          }
+          ctx.restore();
+        }
+
+        function visibleBounds() {
+          return {
+            left: Math.max(0, Math.floor(-view.x / view.cell) - 1),
+            right: Math.min(columns - 1, Math.ceil((plot.width - view.x) / view.cell)),
+            bottom: Math.max(0, Math.floor(rows - (plot.height - view.y) / view.cell) - 1),
+            top: Math.min(rows - 1, Math.ceil(rows + view.y / view.cell)),
+          };
+        }
+
+        function scheduleDraw() {
+          if (frame === null) frame = requestAnimationFrame(draw);
+        }
+
+        function strokeLine(x1, y1, x2, y2) {
+          ctx.moveTo(x1, y1);
+          ctx.lineTo(x2, y2);
+        }
+
+        function drawGrid() {
+          if (!document.getElementById("grid").checked) return;
+          const step = Math.max(1, Math.ceil(8 / view.cell));
+          const spacing = step * view.cell;
+          const offset = value => ((value % spacing) + spacing) % spacing;
+          ctx.strokeStyle = "#929eaa";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          for (let px = plot.left + offset(view.x); px <= plot.left + plot.width; px += spacing) {
+            strokeLine(px, plot.top, px, plot.top + plot.height);
+          }
+          for (let py = plot.top + offset(view.y + rows * view.cell); py <= plot.top + plot.height; py += spacing) {
+            strokeLine(plot.left, py, plot.left + plot.width, py);
+          }
+          ctx.stroke();
+        }
+
+        function drawSymbols(bounds) {
+          const radius = view.cell * .3;
+          ctx.lineWidth = Math.max(.7, Math.min(2, view.cell * .09));
+          for (const sign of [1, -1]) {
+            ctx.strokeStyle = sign === 1 ? "#087332" : "#c62828";
+            ctx.beginPath();
+            for (let col = bounds.left; col <= bounds.right; col++) {
+              const cx = x(col);
+              for (const [start, stop, value] of data.columns[col]) {
+                if (value !== sign) continue;
+                for (let row = Math.max(start, bounds.bottom); row < Math.min(stop, bounds.top + 1); row++) {
+                  const cy = y(row);
+                  if (sign === 1) {
+                    strokeLine(cx - radius, cy - radius, cx + radius, cy + radius);
+                    strokeLine(cx - radius, cy + radius, cx + radius, cy - radius);
+                  } else {
+                    ctx.moveTo(cx + radius, cy);
+                    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                  }
+                }
+              }
+            }
+            ctx.stroke();
+          }
+        }
+
+        function drawSeries(values, bounds) {
+          ctx.beginPath();
+          let connected = false;
+          for (let col = Math.max(0, bounds.left - 1); col <= Math.min(columns - 1, bounds.right + 1); col++) {
+            const value = values[col];
+            if (!Number.isFinite(value)) {
+              connected = false;
+            } else {
+              if (connected) ctx.lineTo(x(col), y(value));
+              else ctx.moveTo(x(col), y(value));
+              connected = true;
+            }
+          }
+          ctx.stroke();
+        }
+
+        function drawBand(upper, lower, bounds) {
+          const end = Math.min(columns - 1, bounds.right + 1);
+          let start = Math.max(0, bounds.left - 1);
+          while (start <= end) {
+            if (!Number.isFinite(upper[start]) || !Number.isFinite(lower[start])) {
+              start++;
+              continue;
+            }
+            let stop = start;
+            ctx.beginPath();
+            ctx.moveTo(x(start), y(upper[start]));
+            while (stop + 1 <= end && Number.isFinite(upper[stop + 1]) && Number.isFinite(lower[stop + 1])) {
+              stop++;
+              ctx.lineTo(x(stop), y(upper[stop]));
+            }
+            for (let col = stop; col >= start; col--) ctx.lineTo(x(col), y(lower[col]));
+            ctx.closePath();
+            ctx.globalAlpha = .15;
+            ctx.fill();
+            ctx.globalAlpha = 1;
+            start = stop + 1;
+          }
+        }
+
+        function drawIndicatorBands(bounds) {
+          for (const indicator of indicators) {
+            if (!indicator.input.checked || !indicator.lower || indicator.psar) continue;
+            ctx.fillStyle = indicator.color;
+            drawBand(indicator.values, indicator.lower, bounds);
+          }
+        }
+
+        function drawIndicators(bounds) {
+          ctx.lineWidth = 1.5;
+          for (const indicator of indicators) {
+            if (!indicator.input.checked) continue;
+            ctx.strokeStyle = indicator.color;
+            ctx.fillStyle = indicator.color;
+            if (indicator.psar) {
+              for (let col = bounds.left; col <= bounds.right; col++) {
+                const value = indicator.values[col];
+                if (!Number.isFinite(value)) continue;
+                ctx.fillStyle = value < 0 ? "#a63676" : indicator.color;
+                ctx.beginPath();
+                ctx.arc(x(col), y(Math.abs(value)), Math.max(1.5, Math.min(4, view.cell * .12)), 0, Math.PI * 2);
+                ctx.fill();
+              }
+            } else {
+              drawSeries(indicator.values, bounds);
+              if (indicator.lower) drawSeries(indicator.lower, bounds);
+            }
+          }
+        }
+
+        function drawOverlays(bounds) {
+          ctx.lineWidth = 2;
+          const trend = data.trendLines;
+          if (document.getElementById("trends").checked) {
+            trend.length.forEach((length, index) => {
+              if (trend.bounded[index] !== "external") return;
+              const col = trend["column index"][index] - data.columnOffset;
+              if (col > bounds.right || col + length < bounds.left) return;
+              const direction = trend.type[index].includes("bullish") ? 1 : -1;
+              const row = trend["box index"][index] - data.matrix_bottom_cut_index - direction * .5;
+              ctx.strokeStyle = direction === 1 ? "#2455b2" : "#c62828";
+              ctx.beginPath();
+              strokeLine(x(col - .5), y(row), x(col + length - .5), y(row + direction * length));
+              ctx.stroke();
+            });
+          }
+          const breakout = data.breakOuts;
+          if (document.getElementById("breakouts").checked) {
+            breakout["column index"].forEach((column, index) => {
+              const col = column - data.columnOffset;
+              const length = breakout.width[index];
+              if (col < bounds.left || col - length > bounds.right) return;
+              const direction = breakout.trend[index];
+              const row = breakout["box index"][index] - data.matrix_bottom_cut_index - direction * .5;
+              ctx.strokeStyle = direction === 1 ? "#2455b2" : "#c62828";
+              ctx.beginPath();
+              strokeLine(x(col + .5), y(row), x(col + .5 - length), y(row));
+              ctx.stroke();
+            });
+          }
+        }
+
+        function drawTargets() {
+          targetHits = [];
+          const labels = new Map();
+          const lineHeight = fontSize * 1.6;
+          ctx.save();
+          const enabled = enabledTargets();
+          const highlighted = new Set(highlightedTargets());
+          const ordered = enabled.filter(target => target.status === "achieved")
+            .concat(enabled.filter(target => target.status === "active"));
+          for (const target of ordered) {
+            const achieved = target.status === "achieved";
+            const py = y(target.row);
+            const source = target["activated column"] ?? target["end column"];
+            const px = Math.max(plot.left, x(source - data.columnOffset + (achieved ? 0 : .5)));
+            const endpoint = achieved ? x(target["achieved column"] - data.columnOffset) : plot.left + plot.width;
+            const right = Math.min(plot.left + plot.width, endpoint);
+            if (py < plot.top || py > plot.top + plot.height || px > right) continue;
+            const style = targetStyles[target.type];
+            ctx.lineWidth = highlighted.has(target) ? 3.5 : achieved ? 1 : 1.5;
+            ctx.strokeStyle = achieved && !highlighted.has(target) ? style.muted : style.color;
+            ctx.setLineDash(achieved ? [3, 5] : style.dash);
+            ctx.beginPath();
+            strokeLine(px, py, right, py);
+            ctx.stroke();
+            targetHits.push({ targets: [target], left: px, right, top: py - 6, bottom: py + 6 });
+            if (achieved) {
+              if (endpoint >= plot.left && endpoint <= plot.left + plot.width) {
+                const radius = Math.max(3, Math.min(6, view.cell * .35));
+                ctx.setLineDash([]);
+                ctx.fillStyle = style.muted;
+                ctx.beginPath();
+                ctx.moveTo(endpoint, py - radius);
+                ctx.lineTo(endpoint + radius, py);
+                ctx.lineTo(endpoint, py + radius);
+                ctx.lineTo(endpoint - radius, py);
+                ctx.closePath();
+                ctx.fill();
+                targetHits.push({
+                  targets: [target], left: endpoint - radius - 3, right: endpoint + radius + 3,
+                  top: py - radius - 3, bottom: py + radius + 3,
+                });
+              }
+              continue;
+            }
+            const lastBucket = Math.max(0, Math.floor(plot.height / lineHeight) - 1);
+            const bucket = Math.min(lastBucket, Math.floor((py - plot.top) / lineHeight));
+            if (!labels.has(bucket)) labels.set(bucket, []);
+            labels.get(bucket).push(target);
+          }
+          ctx.setLineDash([]);
+          ctx.textAlign = "right";
+          ctx.textBaseline = "middle";
+          for (const [bucket, group] of labels) {
+            const prefixes = [...new Set(group.map(target =>
+              targetStyles[target.type].prefix + (target.trend === 1 ? "+" : "-")
+            ))].join("/");
+            const prices = group.map(target => target.target);
+            const min = Math.min(...prices), max = Math.max(...prices);
+            const range = targetNumber(min) === targetNumber(max) ? targetNumber(min) : `${targetNumber(min)}..${targetNumber(max)}`;
+            let text = `${prefixes} ${range}${group.length > 1 ? ` (${group.length})` : ""}`;
+            if (ctx.measureText(text).width > plot.width - 16) {
+              text = `${prefixes} ~${targetNumber((min + max) / 2)} (${group.length})`;
+            }
+            if (ctx.measureText(text).width > plot.width - 16) {
+              text = `~${targetNumber((min + max) / 2)} (${group.length})`;
+            }
+            if (ctx.measureText(text).width > plot.width - 16) {
+              text = `~${targetNumber((min + max) / 2)}`;
+            }
+            const labelWidth = ctx.measureText(text).width;
+            const py = Math.max(plot.top + fontSize, Math.min(
+              plot.top + plot.height - fontSize, plot.top + (bucket + .5) * lineHeight
+            ));
+            const px = plot.left + plot.width - 6;
+            ctx.fillStyle = "rgba(255,255,255,0.94)";
+            ctx.fillRect(px - labelWidth - 4, py - fontSize * .7, labelWidth + 8, fontSize * 1.4);
+            ctx.fillStyle = group.every(target => target.type === group[0].type)
+              ? targetStyles[group[0].type].color : "#17212b";
+            ctx.fillText(text, px, py);
+            targetHits.push({
+              targets: group, left: px - labelWidth - 4, right: px + 4,
+              top: py - fontSize * .7, bottom: py + fontSize * .7,
+            });
+          }
+          ctx.restore();
+        }
+
+        function drawActivations() {
+          const color = "#185abc";
+          const outlined = new Set();
+          const highlighted = new Set(highlightedTargets());
+          const hovered = new Set(hoveredTargets);
+          ctx.save();
+          ctx.strokeStyle = color;
+          ctx.lineWidth = 2;
+          ctx.setLineDash([]);
+          for (const target of highlighted) {
+            const point = activationPoint(target);
+            if (!point || point.column < 0 || point.column >= columns
+                || point.px < plot.left || point.px > plot.left + plot.width) continue;
+            const { column, px, py } = point;
+            if (!outlined.has(column)) {
+              outlined.add(column);
+              const halfWidth = Math.max(1.5, view.cell / 2);
+              const left = Math.max(plot.left, px - halfWidth);
+              const right = Math.min(plot.left + plot.width, px + halfWidth);
+              ctx.strokeRect(left, plot.top, right - left, plot.height);
+            }
+            const targetY = y(target.row);
+            const targetX = px + (target.status === "active" ? view.cell / 2 : 0);
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            strokeLine(px, py, px, targetY);
+            ctx.lineTo(targetX, targetY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            targetHits.push({
+              targets: [target], left: px - 5, right: px + 5,
+              top: Math.min(py, targetY) - 5, bottom: Math.max(py, targetY) + 5,
+            }, {
+              targets: [target], left: px - 5, right: targetX + 5,
+              top: targetY - 5, bottom: targetY + 5,
+            });
+          }
+          const radius = Math.max(5, Math.min(8, fontSize * .4));
+          for (const target of enabledTargets()) {
+            const point = activationPoint(target);
+            if (!point || point.column < 0 || point.column >= columns
+                || point.py < plot.top || point.py > plot.top + plot.height
+                || point.px > plot.left + plot.width) continue;
+            const { px, py } = point;
+            if (hovered.has(target)) {
+              ctx.strokeStyle = color;
+              ctx.lineWidth = 1 / ratio;
+              ctx.beginPath();
+              strokeLine(Math.max(plot.left, px), py, plot.left + plot.width, py);
+              ctx.stroke();
+            }
+            if (px < plot.left) continue;
+            const direction = target.trend === 1 ? 1 : -1;
+            ctx.beginPath();
+            ctx.moveTo(px, py - direction * radius);
+            ctx.lineTo(px + radius, py + direction * radius / 2);
+            ctx.lineTo(px - radius, py + direction * radius / 2);
+            ctx.closePath();
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            ctx.fillStyle = color;
+            ctx.fill();
+            targetHits.push({
+              targets: [target], left: px - radius - 3, right: px + radius + 3,
+              top: py - radius - 3, bottom: py + radius + 3,
+            });
+          }
+          ctx.restore();
+        }
+
+        function drawAxes(bounds) {
+          ctx.fillStyle = "#17212b";
+          ctx.strokeStyle = "#78838c";
+          ctx.lineWidth = 1;
+          ctx.strokeRect(plot.left, plot.top, plot.width, plot.height);
+          const rowStep = Math.max(1, Math.ceil(fontSize * 1.7 / view.cell));
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(plot.left + plot.width, plot.top, width - plot.left - plot.width, plot.height);
+          ctx.clip();
+          ctx.textBaseline = "middle";
+          const extend = data.scaling === "abs" || data.scaling === "log";
+          const bottom = extend ? Math.floor(rows - (plot.height - view.y) / view.cell) - 1 : bounds.bottom;
+          const top = extend ? Math.ceil(rows + view.y / view.cell) : bounds.top;
+          for (let row = Math.ceil(bottom / rowStep) * rowStep; row <= top; row += rowStep) {
+            const price = rowPrice(row);
+            if (Number.isFinite(price)) {
+              const label = row >= 0 && row < rows ? number(price) : targetNumber(price);
+              ctx.fillText(label, plot.left + plot.width + 8, y(row));
+            }
+          }
+          ctx.restore();
+          const colStep = Math.max(1, Math.ceil(fontSize * 1.7 / view.cell));
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(plot.left, plot.top + plot.height, plot.width, height - plot.top - plot.height);
+          ctx.clip();
+          ctx.textBaseline = "middle";
+          for (let col = Math.ceil(bounds.left / colStep) * colStep; col <= bounds.right; col += colStep) {
+            ctx.save();
+            ctx.translate(x(col), plot.top + plot.height + 8);
+            ctx.rotate(Math.PI / 2);
+            ctx.fillText(String(data.columnLabels[col]), 0, 0);
+            ctx.restore();
+          }
+          ctx.restore();
+        }
+
+        function draw() {
+          frame = null;
+          ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+          ctx.clearRect(0, 0, width, height);
+          ctx.fillStyle = "white";
+          ctx.fillRect(0, 0, width, height);
+          ctx.font = font;
+          const bounds = visibleBounds();
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(plot.left, plot.top, plot.width, plot.height);
+          ctx.clip();
+          drawIndicatorBands(bounds);
+          drawGrid();
+          drawIndicators(bounds);
+          drawSymbols(bounds);
+          drawOverlays(bounds);
+          drawTargets();
+          drawTargetSources();
+          drawActivations();
+          ctx.restore();
+          drawAxes(bounds);
+        }
+
+        function fit(recent, includeTargets = false) {
+          clearTargetInfo();
+          const first = recent ? Math.max(0, columns - 50) : 0;
+          let low = rows - 1, high = 0;
+          for (let col = first; col < columns; col++) {
+            for (const [start, stop] of data.columns[col]) {
+              low = Math.min(low, start);
+              high = Math.max(high, stop - 1);
+            }
+          }
+          if (includeTargets) {
+            for (const target of enabledTargets()) {
+              if (target.status === "achieved" && target["achieved column"] - data.columnOffset < first) continue;
+              low = Math.min(low, target.row);
+              high = Math.max(high, target.row);
+            }
+          }
+          view.cell = Math.max(Number.EPSILON, Math.min(80, plot.width / (columns - first + 2), plot.height / (high - low + 5)));
+          view.x = plot.width - (columns + 1) * view.cell;
+          view.y = (plot.height - (high - low + 1) * view.cell) / 2 - (rows - high - 1) * view.cell;
+          scheduleDraw();
+        }
+
+        function zoom(factor, px = plot.left + plot.width / 2, py = plot.top + plot.height / 2) {
+          clearTargetInfo();
+          const cell = Math.max(Number.EPSILON, Math.min(120, view.cell * factor));
+          const scale = cell / view.cell;
+          view.x = px - plot.left - (px - plot.left - view.x) * scale;
+          view.y = py - plot.top - (py - plot.top - view.y) * scale;
+          view.cell = cell;
+          scheduleDraw();
+        }
+
+        function resize() {
+          clearTargetInfo();
+          const previous = plot;
+          width = canvas.clientWidth;
+          height = canvas.clientHeight;
+          ratio = window.devicePixelRatio || 1;
+          canvas.width = Math.round(width * ratio);
+          canvas.height = Math.round(height * ratio);
+          const style = getComputedStyle(canvas);
+          fontSize = parseFloat(style.fontSize);
+          font = `${fontSize}px ${style.fontFamily}`;
+          ctx.font = font;
+          const prices = data.boxScale.map(number).concat(targets.map(target => targetNumber(target.target)));
+          const priceWidth = prices.reduce((max, value) => Math.max(max, ctx.measureText(value).width), 0) + 20;
+          const labelHeight = data.columnLabels.reduce((max, value) => Math.max(max, ctx.measureText(String(value)).width), 0) + 20;
+          plot = {
+            left: 12, top: 12,
+            width: Math.max(1, width - priceWidth - 24),
+            height: Math.max(1, height - labelHeight - 24),
+          };
+          if (previous) {
+            view.x += (plot.width - previous.width) / 2;
+            view.y += (plot.height - previous.height) / 2;
+            scheduleDraw();
+          } else {
+            fit(true);
+          }
+        }
+
+        function point(event) {
+          const rect = canvas.getBoundingClientRect();
+          return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+        }
+
+        function gesture(points) {
+          const [a, b = a] = points;
+          return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distance: Math.hypot(a.x - b.x, a.y - b.y) };
+        }
+
+        targetInfo.addEventListener("pointerdown", event => {
+          const handle = event.target.closest(".drag-info");
+          if (!handle || event.button !== 0 || infoDrag) return;
+          infoDrag = {
+            handle, pointerId: event.pointerId, x: event.clientX, y: event.clientY,
+            left: parseFloat(targetInfo.style.left), top: parseFloat(targetInfo.style.top),
+          };
+          handle.focus({ preventScroll: true });
+          handle.setPointerCapture(event.pointerId);
+          handle.classList.add("dragging");
+          event.preventDefault();
+        });
+        targetInfo.addEventListener("pointermove", event => {
+          if (!infoDrag || event.pointerId !== infoDrag.pointerId) return;
+          moveTargetInfo(infoDrag.left + event.clientX - infoDrag.x, infoDrag.top + event.clientY - infoDrag.y);
+        });
+        for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+          targetInfo.addEventListener(type, event => {
+            if (infoDrag && event.pointerId === infoDrag.pointerId) finishInfoDrag();
+          });
+        }
+        targetInfo.addEventListener("keydown", event => {
+          if (!event.target.closest(".drag-info")) return;
+          const moves = { ArrowLeft: [-fontSize, 0], ArrowRight: [fontSize, 0], ArrowUp: [0, -fontSize], ArrowDown: [0, fontSize] };
+          const move = moves[event.key];
+          if (!move) return;
+          event.preventDefault();
+          moveTargetInfo(parseFloat(targetInfo.style.left) + move[0], parseFloat(targetInfo.style.top) + move[1]);
+        });
+
+        canvas.addEventListener("pointerdown", event => {
+          if (event.button !== 0) return;
+          if (!pointers.size) {
+            pointerStart = point(event);
+            suppressClick = false;
+          } else {
+            suppressClick = true;
+            clearTargetInfo();
+          }
+          canvas.focus({ preventScroll: true });
+          canvas.setPointerCapture(event.pointerId);
+          pointers.set(event.pointerId, point(event));
+          canvas.classList.add("dragging");
+        });
+        canvas.addEventListener("pointermove", event => {
+          if (!pointers.has(event.pointerId)) {
+            setHoveredTargets(targetsAt(point(event)));
+            return;
+          }
+          const position = point(event);
+          if (pointers.size > 1 || (pointerStart && Math.hypot(position.x - pointerStart.x, position.y - pointerStart.y) > 4)) {
+            suppressClick = true;
+            clearTargetInfo();
+          }
+          const before = gesture([...pointers.values()]);
+          pointers.set(event.pointerId, point(event));
+          const after = gesture([...pointers.values()]);
+          view.x += after.x - before.x;
+          view.y += after.y - before.y;
+          if (pointers.size === 2 && before.distance > 0) {
+            zoom(after.distance / before.distance, after.x, after.y);
+          } else {
+            scheduleDraw();
+          }
+        });
+        canvas.addEventListener("pointerleave", () => setHoveredTargets());
+        canvas.addEventListener("click", event => {
+          if (suppressClick) return;
+          const position = point(event);
+          const targets = targetsAt(position);
+          if (targets.length) {
+            selectedTargets = targets;
+            showTargetInfo(targets, position);
+            scheduleDraw();
+          } else {
+            clearTargetInfo();
+          }
+        });
+        document.addEventListener("keydown", event => {
+          if (event.key === "Escape" && (hoveredTargets.length || selectedTargets.length)) {
+            clearTargetInfo();
+            canvas.focus({ preventScroll: true });
+            event.preventDefault();
+          }
+        });
+        function release(event) {
+          if (event.type === "pointercancel") suppressClick = true;
+          pointers.delete(event.pointerId);
+          if (!pointers.size) canvas.classList.remove("dragging");
+        }
+        for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) {
+          canvas.addEventListener(type, release);
+        }
+        canvas.addEventListener("wheel", event => {
+          event.preventDefault();
+          const position = point(event);
+          const delta = event.deltaY * (event.deltaMode === 1 ? fontSize : event.deltaMode === 2 ? plot.height : 1);
+          zoom(Math.exp(-Math.max(-100, Math.min(100, delta)) * .002), position.x, position.y);
+        }, { passive: false });
+        canvas.addEventListener("keydown", event => {
+          const moves = { ArrowLeft: [80, 0], ArrowRight: [-80, 0], ArrowUp: [0, 80], ArrowDown: [0, -80] };
+          if (moves[event.key]) {
+            view.x += moves[event.key][0];
+            view.y += moves[event.key][1];
+          } else if (event.key === "+" || event.key === "=") {
+            zoom(1.2);
+          } else if (event.key === "-") {
+            zoom(1 / 1.2);
+          } else if (event.key === "Home") {
+            fit(true);
+          } else {
+            return;
+          }
+          clearTargetInfo();
+          event.preventDefault();
+          scheduleDraw();
+        });
+        document.getElementById("recent").addEventListener("click", () => fit(true));
+        document.getElementById("fit").addEventListener("click", () => fit(false));
+        document.getElementById("fit-targets").addEventListener("click", () => fit(true, true));
+        document.getElementById("grid-only").addEventListener("click", () => {
+          for (const input of controls.querySelectorAll('input[type="checkbox"]')) {
+            input.checked = input.id === "grid";
+          }
+          clearTargetInfo();
+          scheduleDraw();
+        });
+        document.getElementById("zoom-in").addEventListener("click", () => zoom(1.2));
+        document.getElementById("zoom-out").addEventListener("click", () => zoom(1 / 1.2));
+        for (const id of ["grid", "trends", "breakouts", "vertical-targets", "horizontal-targets", "achieved-targets"]) {
+          document.getElementById(id).addEventListener("change", scheduleDraw);
+        }
+        controls.addEventListener("change", clearTargetInfo);
+        canvas.setAttribute("aria-label", `${data.title}. ${columns} columns. ${rows} price levels. ${targets.length - achievedCount} active count targets. ${achievedCount} achieved count targets.`);
+        status.textContent = "";
+        resize();
+        new ResizeObserver(resize).observe(canvas);
+      }
+
+      loadChart().catch(error => {
+        document.getElementById("status").textContent = `Unable to display chart: ${error.message}`;
+        console.error(error);
+      });
+    </script>
+  </body>
+</html>
